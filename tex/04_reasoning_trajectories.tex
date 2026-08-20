@@ -1,0 +1,56 @@
+\section{Reasoning Trajectories and Objective-Relative State}
+\label{sec:reasoning}
+
+\subsection{Related work and precise gap}
+\TODO{Full verified related-work section. Cover mechanistic/representation analyses of CoT, information-peak/state-abstraction work, causal activation evidence, continuous latent reasoning, and CoT compression. End with the gap: prior work usually privileges one notion of useful state; we test whether a decomposition is canonical across objectives.}
+
+\subsection{Initial hypothesis: latent solution objects}
+\TODO{Explain the motivating idea and why discrete reusable internal updates would be scientifically useful. Preserve the chronology: this was a hypothesis to test, not a conclusion assumed in hindsight.}
+
+\figplaceholder{Conceptual diagram: token sequence $\rightarrow$ latent trajectory $\rightarrow$ hypothesized discrete solution-object updates.}
+
+\subsection{Building the trajectory measurement pipeline}
+\TODO{Only the methodological pieces needed to understand the experiments: generation, hidden-state capture, sentence/token alignment, symbolic updates, correctness labels, and reproducibility. Avoid software-tour prose.}
+
+\subsection{First-wave hypotheses and falsification}
+\TODO{Condense H1--H5 into one table: question, measurement/intervention, result, interpretation. Include text-vs-latent boundaries, localized updates, process-isomer patching, operation discovery, and correctness prediction.}
+
+\figplaceholder{Table: H1--H5 hypothesis / decisive test / result / conclusion.}
+
+\subsection{Distributed updates rather than sharp latent events}
+\TODO{Use matched-window path length, peak share, effective width, and net/path ratio. Replicate across SmolLM and Qwen where available.}
+
+\figplaceholder{Compact distributed-update figure: path percentile, peak share, effective width, net/path for both model families.}
+
+\subsection{Structure exists, but requires an ontology}
+\TODO{Contrast poor raw cosine geometry with high supervised operation-decoding AUC. This prevents the incorrect conclusion that the latent trajectory contains no structure.}
+
+\figplaceholder{Paired bars: raw-geometry AUC versus supervised projected AUC, SmolLM and Qwen.}
+
+\subsection{No free lunch on the sentence lattice}
+\TODO{Main objective-relative thought-unit result: define objectives, segmenters, boundary budget, regret/rank-reversal criterion, held-out evaluation, cross-objective transfer, and model replication.}
+
+\figplaceholder{Headline heatmap: objective $\times$ segmenter performance.}
+\figplaceholder{Headline regret matrix: no single partition dominates across answer information, symbolic updates, correctness, and compression.}
+\figplaceholder{Qualitative trace: overlay objective-specific boundaries on the same reasoning trace.}
+
+\subsection{From native state to explicit state interfaces}
+\TODO{Chronological continuation after July 2: state materialization, first-wave causal failures, explicit handoff hypothesis, matched controls, finite-rate interfaces. Make clear what prompted each step.}
+
+\subsection{State materialization and interchangeability}
+\TODO{Report the distinction between explicit decodable state and implicit endpoints that retain path information; include appropriate random/subspace controls.}
+
+\figplaceholder{Native-factorization / materialization result figure.}
+
+\subsection{Finite-rate explicit state handoff}
+\TODO{Define the interface task and rate-controlled state codes. Report closure and answer accuracy across 2/3/4-bit interfaces, recursive reuse, and context-bound controls. Distinguish semantic-state equivalence from exact-token identity.}
+
+\figplaceholder{Rate--capacity figure for explicit state interfaces.}
+
+\subsection{Closure training and long-horizon reliability}
+\TODO{Compare transition-closure supervision against matched endpoint-only training; report long-horizon gains and error accumulation. State one-seed / restricted-algebra limitations prominently.}
+
+\figplaceholder{Closure-training comparison and local-vs-global reliability figure.}
+
+\subsection{Takeaways}
+\TODO{Central conclusion: useful state decompositions exist, but native reasoning does not support a strong claim of one context-free canonical thought unit; explicit interfaces can create reusable state contracts under controlled conditions.}
