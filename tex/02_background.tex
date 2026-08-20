@@ -1,0 +1,25 @@
+\section{Technical Background}
+\label{sec:background}
+
+\subsection{Reasoning language models and trajectories}
+\TODO{Assume transformer attention is known. Define autoregressive generation, explicit chain-of-thought traces, token positions, layers, and hidden-state trajectory notation $h_t^{(\ell)}$. Distinguish text trajectory from latent trajectory.}
+
+\subsection{Low-rank adaptation}
+\TODO{Introduce LoRA from first principles: $W' = W + \frac{\alpha}{r}BA$, matrix dimensions, rank, placement in transformer projections, parameter count, and the frozen base as shared side information. Explain that $A$ and $B$ need not play symmetric functional roles.}
+
+\figplaceholder{Diagram: frozen transformer weight $W$ plus low-rank update $BA$, with parameter counts and shared-side-information interpretation.}
+
+\subsection{Quantized fine-tuning and QLoRA}
+\TODO{Explain quantized frozen backbone versus trainable adapter. Introduce NF4 only to the depth needed later. Make explicit that a 4-bit backbone does not imply a 4-bit learned update. Separate training-memory quantization from deployed adapter quantization.}
+
+\subsection{Quantization, coding, and rate}
+\TODO{Explain scalar/codebook quantization, scales and metadata, nominal bits/value versus exact serialized decoder-visible bits, and why actual artifact size is the rate used later. Introduce rate--distortion intuition, held-out NLL/code length, behavioral bits written, and $\Rstar(\tau)$.}
+
+\subsection{Probing internal representations}
+\TODO{Linear probes, PCA/whitening where used, cosine geometry, Gram/HSIC-style statistics. Emphasize decodability $\neq$ canonical organization $\neq$ causal use.}
+
+\subsection{Causal interventions on representations}
+\TODO{Activation patching/interchange interventions, donor and recipient trajectories, positive/negative controls, matched-position controls, and what causal sufficiency would establish beyond decoding.}
+
+\subsection{Experimental conventions}
+\TODO{Compact table defining seeds, held-out splits, compute matching, rate matching, confidence intervals, exact artifact reload, pre-specified gates, and notation reused throughout.}

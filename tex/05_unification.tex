@@ -1,0 +1,25 @@
+\section{Toward Information-Theoretic Limits of Reasoning Fine-Tuning}
+\label{sec:unification}
+
+\subsection{Common quantities}
+\TODO{Define a compact common language for dataset information $I(D)$, serialized update rate $R(A)$, behavioral information written $W(A;D)$, minimum useful update rate $\Rstar(\tau)$, and utility-relative reasoning description length $C_U(T)$. Avoid claiming inequalities more strongly than the experiments support.}
+
+\figplaceholder{Unified information-flow diagram: training data information $\rightarrow$ parameter update $\rightarrow$ latent reasoning trajectory $\rightarrow$ behavior.}
+
+\subsection{What the two research lines jointly suggest}
+\TODO{Synthesis, not forced equivalence: both projects distinguish nominal representation size from task-relevant information and show that preserving a norm/geometry is not equivalent to preserving behavior. Identify where the analogy is empirical versus conjectural.}
+
+\subsection{Conjectures and falsification criteria}
+\TODO{State 2--4 precise, falsifiable conjectures rather than broad future-work prose. Candidate: dataset information predicts minimum behavioral update rate under compute-matched adaptation; preserving task behavior does not necessarily preserve reasoning-state organization; useful trajectory compression is utility-dependent.}
+
+\subsection{Experiment 1: data information versus adaptation rate}
+\TODO{Connect directly to the ongoing fineQComp campaign and specify the result slot.}
+
+\subsection{Experiment 2: adapter rate versus reasoning geometry}
+\TODO{Proposed experiment: compress one reasoning fine-tune across a rate ladder and measure task accuracy, operation decodability, trajectory geometry, and objective-relative thought-unit rankings. Compare the rate needed to preserve behavior with the rate needed to preserve internal structure.}
+
+\subsection{Experiment 3: utility-relative trajectory rate--distortion}
+\TODO{Proposed experiment: optimize trajectory compression separately for answer preservation, symbolic updates, correctness prediction, and causal equivalence. Test whether rate--distortion frontiers differ across utilities.}
+
+\subsection{Limits of the present evidence}
+\TODO{Separate completed empirical findings from the research program proposed here. This section should make the unification credible by being explicit about what remains speculative.}

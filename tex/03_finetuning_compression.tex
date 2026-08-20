@@ -1,0 +1,39 @@
+\section{Fine-Tuning Under an Information Budget}
+\label{sec:fineqcomp}
+
+\subsection{Related work and precise gap}
+\TODO{Full verified related-work section. Organize around PEFT and quantized bases; adapter compression; exact versus nominal rate; behavioral information / MDL. End with the gap: relating independently measured data information to the minimum exact adapter description that preserves behavior.}
+
+\subsection{Starting point: rate--distortion pilots}
+\TODO{Reconstruct the May \texttt{itft\_pilot} phase: rank sweeps, dataset-compressibility controls, 0.5B/1.5B confirmation, A/B asymmetry, and why ARC was rejected as the primary distortion measure.}
+
+\figplaceholder{Early research figure: representative rank--held-out-loss curves and A-only/B-only/full comparison. Use only if they clarify the evolution of the question; otherwise move to appendix.}
+
+\subsection{From nominal capacity to exact update rate}
+\TODO{Explain why rank, nominal width, and raw parameter count were inadequate. Define exact serialized decoder-visible adapter rate and the fixed-checkpoint codec protocol.}
+
+\figplaceholder{Pipeline diagram: dataset $\rightarrow$ QLoRA training $\rightarrow$ fixed raw adapter $\rightarrow$ codec ladder $\rightarrow$ serialized artifact $\rightarrow$ reload $\rightarrow$ behavioral evaluation.}
+
+\subsection{Experimental protocol}
+\TODO{Models, tasks, LoRA placement/rank, seeds, training protocol, exact-rate accounting, held-out NLL and exact-task evaluation. Clearly separate training from post-training compression.}
+
+\subsection{Adaptive MDL allocation: hypothesis and negative result}
+\TODO{Research sequence: hypothesize that reconstruction-aware allocation should preserve behavior efficiently; test adaptive allocation against fixed-rate controls; report the negative result.}
+
+\figplaceholder{Headline rate--behavior frontier: adaptive MDL vs uniform / LoRAQuant-style controls.}
+
+\subsection{Weight error does not determine behavioral error}
+\TODO{Center the counterexample: adaptive allocation can obtain lower RMSE while catastrophically losing behavior relative to a slightly worse-RMSE fixed codec. State only after exact numbers are re-audited from result artifacts.}
+
+\figplaceholder{Scatter: adapter reconstruction RMSE versus retained behavior, highlighting the decisive counterexample.}
+
+\subsection{Failure analysis and experimental corrections}
+\TODO{Row dropping catastrophe; exact-rate decomposition; cache contamination / accounting corrections; validation-opportunity bias; why these changed subsequent experimental design. Select only corrections with scientific relevance.}
+
+\subsection{Does required update rate track dataset information?}
+\TODO{Current compute-matched experiment: vary distinct information while holding optimizer updates and samples seen fixed; dense codec ladder around $\Rstar(0.9)$; compare unique rows, corpus code length, and behavioral $\Rstar$. Insert final results when campaign stabilizes.}
+
+\figplaceholder{Primary ongoing plot: independently measured dataset information vs $\Rstar(0.9)$ with seed uncertainty.}
+
+\subsection{Takeaways}
+\TODO{Summarize what was learned about measuring fine-tuning information, including negative results and the methodological refinement they forced.}
