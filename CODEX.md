@@ -1,28 +1,22 @@
 # Codex handoff
 
-Continue the thesis work from this repository on branch `thesis-draft`.
+Your **only task** is to reconstruct a comprehensive, evidence-backed history of Joey's master's/internship research from the local machine.
 
-## What to inspect
+Search for and inspect the local clones/worktrees of `itft_pilot`, `fineqcomp`, and `reasoning-trajectory-private`. Use **all relevant Git history and branches**, plus notes, configs, result artifacts, logs, plots, CSV/JSON files, PDFs, and timestamps when useful.
 
-Search this machine for the local clones/worktrees of:
+Build `notes/internship_timeline.md` into a detailed May–August 2026 chronology. For each meaningful stage, record:
 
-- `masters-thesis`
-- `itft_pilot`
-- `fineqcomp`
-- `reasoning-trajectory-private`
+- date / commit / branch;
+- hypothesis or question;
+- experiment or implementation change;
+- result;
+- failure, limitation, or diagnosis;
+- what decision/pivot followed;
+- exact source files/artifacts;
+- explicit attribution to Paul Caillon or the original internship proposal where documented.
 
-Use the **local Git histories, branches, result artifacts, plots, CSV/JSON files, notes, PDFs, and experiment configs** as the source of truth. In `reasoning-trajectory-private`, inspect every relevant branch, especially `thought-units-followup`, `layer-information`, `layer-paper-replications`, `causal-depth-relief`, `causal-state-handoff`, and `causal-reasoning-questions`.
+In `reasoning-trajectory-private`, inspect **every relevant branch**, especially `thought-units-followup`, `layer-information`, `layer-paper-replications`, `causal-depth-relief`, `causal-state-handoff`, and `causal-reasoning-questions`; do not flatten branch history into a coarse summary. For `itft_pilot`, use the research diary/result timestamps because its Git history is a bulk snapshot. For `fineqcomp`, follow the commit history closely and capture methodological corrections as well as experiments.
 
-## Immediate priorities
+Be exhaustive and factual. Distinguish what the artifacts explicitly establish from inferred chronology. Unless a source explicitly attributes an idea elsewhere, treat it as Joey's.
 
-1. Finish `notes/internship_timeline.md` as a detailed May–August research chronology: hypothesis → experiment → result → failure/diagnosis → next decision.
-2. Find any explicit attribution to Paul Caillon or the original internship proposal; otherwise assume ideas and implementation choices are Joey's.
-3. Inventory the strongest thesis-ready results and figures, tracing each one to its exact source artifact, then populate `media/` cleanly.
-4. Populate `bibliography/references.bib` from the already-audited `bibliography/citation_audit.md` using final primary-source metadata.
-5. Fill Sections III and IV at the evidence level before polishing prose.
-
-## Thesis constraints
-
-Target ~20–30 pages. Optimize for research taste and contribution, not a software diary. Negative results and methodological corrections matter. Keep claims conservative and traceable to artifacts. Sections III–IV should be strong enough to resemble incomplete paper drafts; Section V may synthesize the two lines but must clearly distinguish established results from conjecture/future work.
-
-Do not delete or rewrite useful source artifacts. Prefer reproducible derived figures/tables and record provenance.
+**Do nothing else:** do not draft thesis prose, edit LaTeX, touch the bibliography, curate/copy media, generate figures, or change any file other than `notes/internship_timeline.md`.
