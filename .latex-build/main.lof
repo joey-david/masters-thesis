@@ -1,17 +1,17 @@
 \contentsline {figure}{\numberline {1}{\ignorespaces Research sequence, April--August 2026.}}{3}{figure.caption.3}%
 \contentsline {figure}{\numberline {2}{\ignorespaces Low-rank adaptation of a frozen weight matrix.}}{6}{figure.caption.4}%
-\contentsline {figure}{\numberline {3}{\ignorespaces Adaptive MDL allocation and the RMSE counterexample.}}{12}{figure.caption.5}%
-\contentsline {figure}{\numberline {4}{\ignorespaces Compute-matched distinct-row rate--retention curves.}}{12}{figure.caption.7}%
-\contentsline {figure}{\numberline {5}{\ignorespaces Content diversity and distinct-row controls.}}{12}{figure.caption.8}%
-\contentsline {figure}{\numberline {6}{\ignorespaces Known source information versus adapter rate.}}{14}{figure.caption.9}%
-\contentsline {figure}{\numberline {7}{\ignorespaces Learned prediction gain does not set adapter rate.}}{14}{figure.caption.11}%
-\contentsline {figure}{\numberline {8}{\ignorespaces Content diversity moves adapter rate on XBRL but not reliably on SQL.}}{17}{figure.caption.13}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Adaptive MDL allocation and the RMSE counterexample.}}{11}{figure.caption.5}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Compute-matched distinct-example rate--retention curves.}}{12}{figure.caption.7}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Content diversity and distinct-example controls.}}{12}{figure.caption.8}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Known source information versus adapter rate.}}{13}{figure.caption.9}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Learned prediction gain does not set adapter rate.}}{15}{figure.caption.11}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Content diversity moves adapter rate on XBRL but not reliably on SQL.}}{15}{figure.caption.13}%
 \contentsline {figure}{\numberline {9}{\ignorespaces Rank scaling and layer-band allocation controls.}}{17}{figure.caption.15}%
-\contentsline {figure}{\numberline {10}{\ignorespaces Task-conditioned stage-marker pilot.}}{21}{figure.caption.16}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Task-conditioned stage-marker pilot.}}{19}{figure.caption.16}%
 \contentsline {figure}{\numberline {11}{\ignorespaces Objective-relative partition utility and regret.}}{21}{figure.caption.17}%
-\contentsline {figure}{\numberline {12}{\ignorespaces Exact closed-loop regret over horizon.}}{23}{figure.caption.18}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Exact closed-loop regret over horizon.}}{22}{figure.caption.18}%
 \contentsline {figure}{\numberline {13}{\ignorespaces Native state factorization and explicit handoff.}}{23}{figure.caption.19}%
-\contentsline {figure}{\numberline {14}{\ignorespaces Full-support proof-state rate control.}}{25}{figure.caption.20}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Full-support proof-state rate control.}}{24}{figure.caption.20}%
 \contentsline {figure}{\numberline {15}{\ignorespaces Matched-rate path-alias control.}}{25}{figure.caption.21}%
 \contentsline {figure}{\numberline {16}{\ignorespaces Surface length, active depth, and behavior.}}{25}{figure.caption.22}%
 \contentsline {figure}{\numberline {17}{\ignorespaces Local versus global register reliability.}}{26}{figure.caption.23}%

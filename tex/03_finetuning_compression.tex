@@ -5,9 +5,7 @@
 
 \subsubsection{Low-dimensional adaptation}
 
-Intrinsic-dimension results show that successful language-model adaptation can lie in a much smaller subspace than the full parameter space \parencite{aghajanyan2021intrinsic}. The original LoRA method leverages that constraint, by learning a low-rank update to selected weight matrices \parencite{hu2022lora}. On top of LoRA, AdaLoRA allocates rank by an importance score rather than fixing the same rank throughout the model \parencite{zhang2023adalora}. Work on LoRA factor asymmetry further shows that the input and output factors can contribute unequally despite having the same rank and similar storage cost \parencite{zhu2024asymmetry}.
-
-Since we study adaptation capacity, and rank is often used as an analogy for the expressivity of the transformation of a matrix, it could seem natural to use it as an alternative for information. Rank, however, is not a communication rate. Two rank-$r$ adapters can require different code lengths once precision, scales, sparsity, selectors, and metadata come into play. The aforementioned asymmetry result also warns that a codec based only on tensor size (or reconstruction error) can "spend" bits on the wrong part of the update.
+  Intrinsic-dimension results show that successful language-model adaptation can lie in a much smaller subspace than the full parameter space \parencite{aghajanyan2021intrinsic}. The original LoRA method leverages that constraint, by learning a low-rank update to selected weight matrices \parencite{hu2022lora}. On top of LoRA, AdaLoRA allocates rank by an importance score rather than fixing the same rank throughout the model \parencite{zhang2023adalora}. Work on LoRA factor asymmetry further shows that the input and output factors can contribute unequally despite having the same rank and similar storage cost \parencite{zhu2024asymmetry}.
 
 \subsubsection{Quantization and quantization-aware adaptation}
 
@@ -29,63 +27,56 @@ Finally, \textcite{bergstrasser2026succinct} study description length from the o
 
 \subsection{May pilots: deciding which variable to measure}
 
-Throughout this chapter, a training set is a collection of supervised prompt--response \emph{examples}. In our implementation each example is stored as one JSONL record, but we use ``example'' rather than ``row'' for data because the codec later operates on actual rows of LoRA matrices. One \emph{epoch} is one complete pass through the current training set, while \emph{samples seen} counts example presentations including repetitions. We call one model--dataset--training condition an experimental \emph{arm}, and a related collection of arms a \emph{panel}; different random seeds are independent repetitions of the same arm.
+Throughout this section, a training set is a collection of supervised prompt--response \emph{examples}. We call one model--dataset--training condition an experimental \emph{arm}, and a related collection of arms a \emph{panel}.
 
-The first practical problem was choosing a measurable proxy for how much a fine-tune writes. Rank was the cheapest candidate: if useful adaptation really occupied a small subspace, the smallest effective rank might behave like a crude information budget. We therefore began with a small QLoRA rank sweep before building a true codec.
+Once our main literature review phase was over, we wanted to use a cheap measurable proxy for how much a fine-tune writes. The LoRA's matrices' rank was the cheapest candidate, as if useful adaptation really occupies a small subspace, the smallest effective rank might behave like a crude information budget. We therefore began with a small QLoRA rank sweep before building a true codec.
 
-The initial Qwen2.5-0.5B sweep used instruction-following examples from Alpaca and Dolly, with LoRA ranks 0, 2, 4, 8, and 16; rank 0 is the frozen-model baseline. Most improvement in held-out next-token loss appeared between rank 0 and rank 2, with smaller gains thereafter. A Qwen2.5-1.5B repeat showed the same broad knee. Useful adaptation occupied a small low-rank subspace in these runs. They still did not identify an information rate because every nonzero rank stored floating-point factors and each rank was trained independently, mixing representational capacity with optimization.
+An initial Qwen2.5-0.5B sweep used instruction-following examples from the \emph{Alpaca} and \emph{Dolly} datasets, with LoRA ranks $\in \{0, 2, 4, 8, 16\}$; rank 0 being the frozen-model baseline. Most improvement in held-out next-token loss appeared between rank 0 and rank 2, with smaller gains thereafter.  Useful adaptation occupied a small low-rank subspace in these runs.
 
-We first thought that the knee itself might be the desired limit: perhaps the smallest effective rank measured how much the task needed to write. The repeat at a larger scale made this plausible until we inspected what rank left unspecified. Rank-two and rank-sixteen adapters are not messages at a defined rate unless their values, scales, and tensor layouts are encoded. Independent training also gives each rank a different optimization path. The rank curve was a capacity sweep, not the rate--distortion curve of one learned update.
+On top of rank, we also wondered whether the amount or ordinary compressibility of the training data predicted how much information would be written. Our pilot dataset variants either duplicated examples or made their prompt--response templates more regular. Exact duplication is deliberately content-free, as it increases the nominal number of stored examples without adding a new training case. But under epoch-based training, it also changes optimization exposure and revisiting frequency.
 
-Rank was only one candidate. We also asked whether the amount or ordinary compressibility of the training data predicted how much information would be written. Pilot dataset variants either duplicated examples or made their prompt--response templates more regular. Exact duplication is deliberately content-free---it increases the nominal number of stored examples without adding a new training case---but under epoch-based training it also changes optimization exposure and revisit frequency. Template regularization changed both compressibility and the prediction format. Neither manipulation was therefore a clean intervention on information alone.
+Separately, $A$-only (with $A$ being the down-projecting matrix of the LoRA adapter) LoRA training stayed near baseline, while $B$-only recovered much of full-LoRA performance in the tested setup. This functional asymmetry warned against treating equally sized parts of the adapter as equally valuable.
 
-Two other checks shaped the later protocol. A small ARC-Challenge accuracy sample was flat and noisy compared with held-out supervised next-token loss, so sparse task accuracy could not resolve small codec differences. Separately, $A$-only LoRA training stayed near baseline while $B$-only recovered much of full-LoRA performance in the tested setup. This functional asymmetry warned against treating equally sized parts of the adapter as equally valuable.
-
-These pilots eliminated several easy operationalizations at once: nominal rank was not a rate, nominal example count was confounded with training exposure, superficial corpus compressibility was not a clean information intervention, and a small exact-accuracy benchmark was too noisy as the main distortion signal. The next methodological step was therefore to hold one learned update fixed and vary only how many bits were used to store it.
+Though they carried a lot of negative results and imprecisions, these initial pilots helped us refine our intuition and eliminate a lot of easy targets: nominal rank is not a rate, nominal example count is confounded with training exposure, superficial corpus compressibility is not a clean information intervention, and a small exact-accuracy benchmark is too noisy. Our next methodological step was therefore to hold one learned update fixed and vary only how many bits were used to store it.
 
 \subsection{Fixed-checkpoint exact-rate protocol}
 
-To turn the question into a rate--distortion experiment, we froze a trained adapter and varied only the message used to reconstruct it. This removes retraining as a source of variation and makes every point on the curve a different encoding of the same learned update.
+To turn the question into a rate--distortion experiment, we froze a trained adapter and varied only the message used to reconstruct it. This removed retraining as a source of variation and makes every point on the curve a different encoding of the same learned update.
 
-The resulting protocol first trains one uncompressed, or \emph{raw}, rank-16 adapter. It then freezes that checkpoint and derives a \emph{codec ladder}: a sequence of increasingly compressed files obtained from the same weights without retraining. The base model, tensor order, codec, and evaluation program are shared side information. Each candidate writes a real file that includes selectors, scales, headers, packed payload, and compression overhead; a fresh path decodes that file and loads it into the base model before scoring. We report rate as total serialized file bits divided by the number of scalar values in the raw adapter, in bits per raw adapter value.
+We train one rank-16 LoRA adapter once, then compress (via python's \emph{LZMA}) that same adapter to several file sizes without retraining. Each compressed adapter is serialized to disk, reloaded into the frozen base model, and evaluated. The reported rate is the final file size divided by the number of values in the original adapter, in bits per adapter value.
 
-The main quantizer uses symmetric zero-free mid-rise levels with a least-squares scale per matrix row. At one bit this is $\operatorname{sign}(w)\operatorname{mean}|w|$. Fixed controls include uniform one- to eight-bit codes and zero-containing mid-tread codes. Sub-bit points drop paired LoRA rank directions, so an $A$ direction and its corresponding $B$ direction survive together. This distinction matters: sub-bit selection and one-bit quantization are different distortion mechanisms, although every experimental arm follows the same ladder.
+For rates of one bit and above, we quantize each matrix row independently. At one bit, every value is replaced by either $+\operatorname{mean}|w|$ or $-\operatorname{mean}|w|$ according to its sign; higher-rate variants use more quantization levels. For rates below one bit per value, quantization alone is impossible, so we instead remove matched LoRA rank components, always dropping the corresponding directions in $A$ and $B$ together. Thus the low-rate end of the curve combines rank reduction below one bit with ordinary quantization at one bit and above.
 
 Behavior is measured primarily by held-out next-token negative log-likelihood. If $L_0$ is the frozen base-model loss, $L_{\rm raw}$ the raw-adapter loss, and $L_r$ the loss after decoding a file at rate $r$, we define retained prediction gain as
 \[
 \operatorname{Retain}(r)=\frac{L_0-L_r}{L_0-L_{\rm raw}}.
 \]
-The main threshold $\Rstar(.90)$ is the smallest measured serialized rate with at least $90\%$ retained gain. Exact task accuracy is kept as a behavioral anchor rather than the dense optimization target.
-
-The natural-task campaign uses Mistral-7B on an NF4 backbone, rank-16 all-linear LoRA, MetaMathQA training, 1,319 GSM8K test questions, and held-out NLL on 256 MetaMathQA examples. Seeds 11, 22, and 33 give independent training runs. Exact-match accuracy anchors behavior, while about 48,700 held-out tokens give a lower-variance estimate of prediction gain.
-
-The protocol also defines when a threshold is actually measured. The raw adapter must materially improve over the base model, the codec ladder must contain points on both sides of the $90\%$ target, and the file must decode without access to the raw tensors. Only then is $\Rstar(.90)$ treated as observed rather than censored. In the first pass, every arm appeared to need 1.02 bits per value because the ladder stopped too early; the bracketing rule correctly identifies that apparent equality as a measurement floor rather than a flat scientific result.
+The main threshold $\Rstar(.90)$ is the smallest measured serialized rate with at least $90\%$ retained gain, which we recurrently and arbitrarily choose as a threshold for satisfactory performance recovery.
 
 \subsection{Adaptive allocation: a negative result}
 \label{subsec:adaptive-allocation}
 
-Once the rate axis was defined, the next question was whether those bits could be spent intelligently. Reconstruction error was the natural first surrogate: if matrix rows whose weights are reconstructed most poorly are also those whose corruption harms behavior most, an MDL-style allocator should beat uniform precision at the same file size.
+Once the rate axis was defined, the next interrogation was on how to spend bits could be spent intelligently. Reconstruction error was our instinctive, but willingly naive (as many of the neural-net oriented quantization algorithms exist precisely because RMSE minimization, or even $L_1$ error minimization does not preserve performance satisfyingly) first proxy: if matrix rows whose weights are reconstructed most poorly are also those whose corruption harms behavior most, an MDL-style allocator should beat uniform precision at the same file size.
 
-The adaptive codec allowed each row of a LoRA factor matrix to be dropped or encoded at 1, 2, 3, 4, or 8 bits. A Lagrangian allocator minimized reconstruction error plus a code-length penalty. The hypothesis was that spending bits on matrix rows with the best error reduction would dominate uniform coding at a matched file rate.
+Our adaptive codec allowed each row of a LoRA factor matrix to be dropped or encoded at 1, 2, 3, 4, or 8 bits. A Lagrangian allocator minimized reconstruction error plus a code-length penalty. The hypothesis was that spending bits on matrix rows with the best error reduction would dominate uniform coding at a matched file rate.
 
-The adaptive codec did not dominate uniform coding. Row dropping could remove a required member of a LoRA pair, while a small global weight error could occur at a behaviorally sensitive location. In the decisive comparison, an adaptive point with lower adapter RMSE lost far more task behavior than a fixed-rate point with slightly higher RMSE. Thus $\|A-\widehat A\|$ does not order behavioral distortion. Later layer-allocation tests use held-out behavior as the selection target for this reason.
+The adaptive codec did not dominate uniform coding. Row dropping could remove a required member of a LoRA pair, while a small global weight error could occur at a behaviorally sensitive location. In the decisive comparison, an adaptive point with lower adapter RMSE lost far more task behavior than a fixed-rate point with slightly higher RMSE.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/mdl_vs_uniform.pdf}
-\caption[Adaptive MDL allocation and the RMSE counterexample.]{Adaptive MDL allocation against fixed-rate controls. Left: retained held-out prediction gain against exact decoded file rate. Right: retained gain against relative weight RMSE. In the annotated counterexample, similar or lower weight error corresponds to a large behavioral loss. Values come from the committed three-seed Mistral-7B MetaMathQA/GSM8K campaign.}
+\includegraphics[width=1\linewidth]{fineqcomp/plots/mdl_vs_uniform.pdf}
+\caption[Adaptive MDL allocation and the RMSE counterexample.]{Adaptive MDL allocation against fixed-rate controls. Left: retained held-out prediction gain against exact decoded file rate. Right: retained gain against relative weight RMSE.}
 \label{fig:mdl-negative}
 \end{figure}
-
-We expected the adaptive method to work because it priced each matrix row by reconstruction improvement per bit. Its failure changed the research direction. A better global norm would not solve the problem if location and downstream use determined the cost of an error. We added uniform controls, paired sub-bit selection, and later the layer-band interventions to test those factors.
 
 \FloatBarrier
 \subsection{Distinct examples at fixed compute}
 
-The RMSE failure redirected attention from how to allocate a fixed budget to what determines how large that budget must be in the first place. The original hypothesis concerned information in the training data, but an ordinary dataset-size sweep changes optimization exposure as well: with a fixed number of epochs, a larger training set produces more example presentations and usually more optimizer updates. We therefore varied the number of distinct examples while holding optimizer steps and total samples seen fixed; the number of epochs absorbed the difference.
+A better global norm would not solve the problem if location and downstream use determined the cost of an error. We thus added uniform controls, paired sub-bit selection, and later the layer-band interventions to test those factors.
 
-The controlled scaling study held 2,000 optimizer steps and 32,000 training-example presentations fixed while varying distinct MetaMathQA examples from 2,000 to 32,000. Table~\ref{tab:distinct-rate} reports the smallest rate retaining 90\% of each raw adapter's held-out prediction gain.
+The RMSE failure showed that weight error alone was a poor guide for allocating bits. More importantly, it shifted the question from \emph{where} to spend a fixed budget to what determines the required budget in the first place.
 
+We first tested whether that budget grows with the amount of distinct training data. A naive dataset-size sweep would also change training exposure, so we instead varied the number of distinct MetaMathQA examples from 2,000 to 32,000 while holding both optimizer steps (2,000) and total example presentations (32,000) fixed, adjusting the number of epochs accordingly. Table~\ref{tab:distinct-rate} reports the resulting $\Rstar(.90)$ values.
 \begin{table}[!htbp]
 \centering\small
 \begin{tabular}{rrrrr}
