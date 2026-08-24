@@ -41,26 +41,24 @@ Though they carried a lot of negative results and imprecisions, these initial pi
 
 \subsection{Fixed-checkpoint exact-rate protocol}
 
-To turn the question into a rate--distortion experiment, we froze a trained adapter and varied only the message used to reconstruct it. This removed retraining as a source of variation and makes every point on the curve a different encoding of the same learned update.
+To measure an actual rate--distortion curve, we train one rank-16 LoRA adapter and then keep that checkpoint fixed. Every point on the curve is therefore a different compressed representation of the same learned update, rather than a separately trained model.
 
-We train one rank-16 LoRA adapter once, then compress (via python's \emph{LZMA}) that same adapter to several file sizes without retraining. Each compressed adapter is serialized to disk, reloaded into the frozen base model, and evaluated. The reported rate is the final file size divided by the number of values in the original adapter, in bits per adapter value.
+Our codec quantizes the LoRA factors, bit-packs the quantized values together with their scales and metadata, compresses the payload with zlib, and writes the result to disk. We then reload that file into the frozen base model before evaluation. The reported rate is the complete serialized file size divided by the number of values in the original adapter, in bits per adapter value.
 
-For rates of one bit and above, we quantize each matrix row independently. At one bit, every value is replaced by either $+\operatorname{mean}|w|$ or $-\operatorname{mean}|w|$ according to its sign; higher-rate variants use more quantization levels. For rates below one bit per value, quantization alone is impossible, so we instead remove matched LoRA rank components, always dropping the corresponding directions in $A$ and $B$ together. Thus the low-rate end of the curve combines rank reduction below one bit with ordinary quantization at one bit and above.
+At one bit and above, each LoRA matrix is quantized row by row. At one bit, a value is represented only by its sign and its row scale, so it reconstructs to $+\operatorname{mean}|w|$ or $-\operatorname{mean}|w|$. Higher rates use more quantization levels. Below one bit per value, we cannot give every value even one bit, so we instead keep only a fraction of LoRA rank directions, always keeping or dropping the corresponding directions in $A$ and $B$ together.
 
-Behavior is measured primarily by held-out next-token negative log-likelihood. If $L_0$ is the frozen base-model loss, $L_{\rm raw}$ the raw-adapter loss, and $L_r$ the loss after decoding a file at rate $r$, we define retained prediction gain as
+We measure behavior mainly with held-out next-token negative log-likelihood. If $L_0$ is the frozen-model loss, $L_{\rm raw}$ the loss of the uncompressed adapter, and $L_r$ the loss after compression to rate $r$, retained gain is
 \[
 \operatorname{Retain}(r)=\frac{L_0-L_r}{L_0-L_{\rm raw}}.
 \]
-The main threshold $\Rstar(.90)$ is the smallest measured serialized rate with at least $90\%$ retained gain, which we recurrently and arbitrarily choose as a threshold for satisfactory performance recovery.
+We use $\Rstar(.90)$ for the smallest measured rate that retains at least 90\% of the uncompressed adapter's gain. The 90\% threshold is simply a consistent operating point for comparing experiments; the full rate--retention curves remain available when the threshold hides useful detail.
 
 \subsection{Adaptive allocation: a negative result}
 \label{subsec:adaptive-allocation}
 
-Once the rate axis was defined, the next interrogation was on how to spend bits could be spent intelligently. Reconstruction error was our instinctive, but willingly naive (as many of the neural-net oriented quantization algorithms exist precisely because RMSE minimization, or even $L_1$ error minimization does not preserve performance satisfyingly) first proxy: if matrix rows whose weights are reconstructed most poorly are also those whose corruption harms behavior most, an MDL-style allocator should beat uniform precision at the same file size.
+Once the rate axis was defined, we asked whether a fixed bit budget could be allocated more intelligently than uniform precision. Weight reconstruction error was a deliberately simple first proxy: if the rows that are hardest to reconstruct are also the rows whose corruption matters most for behavior, an error-aware allocator should win at the same file size.
 
-Our adaptive codec allowed each row of a LoRA factor matrix to be dropped or encoded at 1, 2, 3, 4, or 8 bits. A Lagrangian allocator minimized reconstruction error plus a code-length penalty. The hypothesis was that spending bits on matrix rows with the best error reduction would dominate uniform coding at a matched file rate.
-
-The adaptive codec did not dominate uniform coding. Row dropping could remove a required member of a LoRA pair, while a small global weight error could occur at a behaviorally sensitive location. In the decisive comparison, an adaptive point with lower adapter RMSE lost far more task behavior than a fixed-rate point with slightly higher RMSE.
+The adaptive codec could drop each row of a LoRA factor matrix or encode it at 1, 2, 3, 4, or 8 bits. A Lagrangian objective traded reconstruction error against code length and chose the allocation. Contrary to the hypothesis, this did not beat uniform coding. In the clearest counterexample, an adaptive point had lower adapter RMSE than a fixed-rate point but preserved far less of the learned behavior.
 
 \begin{figure}[!htbp]
 \centering
@@ -69,14 +67,13 @@ The adaptive codec did not dominate uniform coding. Row dropping could remove a 
 \label{fig:mdl-negative}
 \end{figure}
 
+This result ruled out global weight error as the main quantity we wanted. It also shifted the question from \emph{where} to spend a fixed budget to what determines how large the required budget is in the first place.
+
 \FloatBarrier
 \subsection{Distinct examples at fixed compute}
 
-A better global norm would not solve the problem if location and downstream use determined the cost of an error. We thus added uniform controls, paired sub-bit selection, and later the layer-band interventions to test those factors.
+We first tested whether the required rate grows with the amount of distinct training data. A naive dataset-size sweep would also change training exposure, so we varied the number of distinct MetaMathQA examples from 2,000 to 32,000 while holding both optimizer steps (2,000) and total example presentations (32,000) fixed. The smaller datasets were simply seen for more epochs.
 
-The RMSE failure showed that weight error alone was a poor guide for allocating bits. More importantly, it shifted the question from \emph{where} to spend a fixed budget to what determines the required budget in the first place.
-
-We first tested whether that budget grows with the amount of distinct training data. A naive dataset-size sweep would also change training exposure, so we instead varied the number of distinct MetaMathQA examples from 2,000 to 32,000 while holding both optimizer steps (2,000) and total example presentations (32,000) fixed, adjusting the number of epochs accordingly. Table~\ref{tab:distinct-rate} reports the resulting $\Rstar(.90)$ values.
 \begin{table}[!htbp]
 \centering\small
 \begin{tabular}{rrrrr}
@@ -94,7 +91,7 @@ Distinct examples & Epochs & $\Rstar(.90)$ & Seed range & Raw GSM8K EM \\
 \label{tab:distinct-rate}
 \end{table}
 
-The fit $\Rstar=-0.26+0.081\log_2 n_{\rm distinct}$ has $R^2=0.78$ over 15 seed--arm cells. The two extreme seed ranges do not overlap. The result is not strictly monotone at every adjacent arm: 4,000 examples exceeds 8,000 examples within seed variation. Retention above 100\% in the most repeated arms also shows that quantization can remove overfit components. The safe claim is a span-level relation between the number of distinct examples and required rate, not a smooth law.
+Across the full range, $\Rstar$ generally increases with the number of distinct examples: the fit $\Rstar=-0.26+0.081\log_2 n_{\rm distinct}$ gives $R^2=0.78$ over 15 runs. The trend is not perfectly monotone---the 4,000-example condition exceeds the 8,000-example condition within seed variation---so we do not treat it as a precise scaling law. In the most repeated conditions, compression can even outperform the raw adapter on held-out loss, suggesting that it removes some overfit components. The result therefore supports a broad relationship between distinct training data and required adapter rate.
 
 \begin{figure}[!htbp]
 \centering
@@ -103,9 +100,9 @@ The fit $\Rstar=-0.26+0.081\log_2 n_{\rm distinct}$ has $R^2=0.78$ over 15 seed-
 \label{fig:distinct-rate}
 \end{figure}
 
-The fitted line in \Cref{fig:distinct-rate} hides part of the evidence. The arms begin to separate near a quarter bit per value and retain their ordering over much of the ladder; $\Rstar$ records one horizontal crossing of that change. The dense sub-bit extension was needed because the original one-to-two-bit sweep placed every crossing below its first measured point.
+The full curves add one useful detail that $\Rstar$ alone hides: the conditions begin to separate around a quarter bit per adapter value and remain separated over much of the low-rate range. This is why we extended the original whole-bit ladder with denser sub-bit measurements.
 
-The distinct-example trend was suggestive but still ambiguous: more distinct examples can also mean more genuinely different underlying content, not just fewer repetitions. To isolate that distinction, an 8,000-example follow-up held the total number of training examples fixed while varying how many source problems generated them. With six seeds and roughly 400, 1,200, 3,600, and 5,620 distinct source problems, $\Rstar$ rose from 0.682 to 0.742 bits per value; the 400 and 3,600 seed ranges did not overlap. This supports content, rather than example count alone, as a cause. Yet pooled math runs also show that much of the change follows the behavioral gain achieved by the raw adapter.
+Distinct examples, however, are only a rough proxy for distinct content. Two examples can be different records while still expressing the same underlying problem. We therefore ran a second experiment with exactly 8,000 training examples in every condition, but varied how many source math problems those examples came from. Across six seeds, increasing the number of source problems from roughly 400 to 5,620 raised mean $\Rstar$ from 0.682 to 0.742 bits per value; the 400- and 3,600-problem seed ranges did not overlap.
 
 \begin{figure}[!htbp]
 \centering
@@ -114,16 +111,16 @@ The distinct-example trend was suggestive but still ambiguous: more distinct exa
 \label{fig:content-rows}
 \end{figure}
 
-The results initially suggested a simple account: more distinct content required a larger adapter message. Each arm, however, had also learned a different amount. Retaining 90\% of a larger prediction change sets a harder absolute target. We therefore designed the next controls to separate source information, achieved behavior, and task type.
+This made content diversity look more promising than example count alone, but another confound remained: the adapters trained on more diverse data also tended to improve the model more. Retaining 90\% of a larger improvement may itself require a larger file. We therefore turned to experiments that could separate source information from the amount of behavior learned.
 
 \FloatBarrier
 \subsection{Known-information control}
 
-The natural-data trend still did not tell us what ``information'' meant, or whether our proxies for it were even calibrated. We therefore moved to a synthetic mapping task where the amount of source information is known by construction, so the information measure itself could be checked against a known answer before relating it to adapter rate.
+Natural corpora do not come with a known number of information bits, so a failed correlation could always be blamed on a poor information proxy. We therefore built a synthetic mapping task where the source information is known by construction. Each prompt maps to one of 16 one-token labels, and the conditions differ in the number of independent four-bit label assignments used to generate the data.
 
-Each prompt asks for one of 16 one-token labels. Conditions reuse prototype label tables so the number of independent four-bit draws is known. To estimate description length from prediction, a conditional prequential code trains only on earlier blocks and accumulates the log loss assigned to later blocks. Its preregistered uniform mixture prevents a confidently wrong model from assigning unbounded code length; a later switch-code fix also lets it fall back to the shared base model for a whole block.
+We also estimated the dataset's description length with a conditional prequential code: the model is trained on earlier blocks and used to encode later ones through their log loss. A uniform fallback prevents a confidently wrong model from assigning an arbitrarily large code length, and a later switch-code correction lets an entire block fall back to the shared base model when that is cheaper.
 
-The corrected code orders the 4, 64, 128, 256, and 512-bit conditions and lies within 1.1--3.5 times the known count. This validates it as a coarse data-information measure. Adapter $\Rstar$, however, is 0.842, 0.796, 0.663, and 1.013 from 64 through 512 source bits, with roughly $\pm0.3$ bits of seed spread. It does not track source information. The highest-information conditions saturate the finite prompt domain, while the adapter can encode a reusable rule rather than the sampled table. This negative result rules out the claim that dataset entropy alone sets adapter rate.
+After that correction, the prequential code orders the 4-, 64-, 128-, 256-, and 512-bit conditions correctly and stays within 1.1--3.5 times the known source count. The information measure is therefore at least directionally calibrated. Adapter $\Rstar$, however, is 0.842, 0.796, 0.663, and 1.013 from the 64- through 512-bit conditions, with roughly $\pm0.3$ bits of seed spread. More source information does not consistently require a larger adapter file.
 
 \begin{figure}[!htbp]
 \centering
@@ -132,17 +129,17 @@ The corrected code orders the 4, 64, 128, 256, and 512-bit conditions and lies w
 \label{fig:known-info}
 \end{figure}
 
-The code passed that calibration check, so a broken entropy proxy cannot explain the null $\Rstar$ relation by itself. The adapter can exploit structure shared across mappings. The bits sampled to create a dataset and the bits needed to implement a rule that fits it are different quantities.
+The important distinction is that the bits used to sample a dataset are not necessarily the bits needed to implement the rule that fits it. The adapter can exploit regularities shared across examples instead of memorizing the sampled table. This ruled out source entropy by itself as the quantity setting adapter rate.
 
 \FloatBarrier
 \subsection{Searching for model-relative dataset information}
 \label{subsec:model-relative-information}
 
-The synthetic null ruled out a simple dataset-entropy law, but it left open a more plausible conditional quantity: information that is new to a particular frozen model. Before constructing such a measure, we tested two simpler explanations---the amount learned and corpus identity---and asked whether changing the receiver changes the ordering.
+The synthetic result suggested that the relevant information might be conditional on what the frozen model already knows. Before introducing a new model-relative measure, however, we tested two simpler explanations: perhaps the rate is just determined by how much the fine-tune improves the model, or perhaps each dataset simply has an intrinsic difficulty.
 
-The first math panel suggested that the size of the learned change might set the budget: across 48 rank-16 runs, held-out bits saved explained $56\%$ of the variation in $\Rstar$. That fit covered only 0.16 bits saved per token. To test whether this relation survived changes in surface form, we rewrote the same target answers in five deterministic styles, from plain narrow responses to symbolic ones. These transforms nearly double the learned change, from 0.555 to 1.062 bits per token, while $\Rstar$ moves only from 0.684 to 0.763. Across all ten transform arms, the slope is 0.12 with $R^2=0.37$, against 1.90 in the original math fit. A 16-fold optimizer-budget sweep on identical content also moves prediction gain by only 0.04 bits per token while $\Rstar$ falls. The amount learned does not set the rate.
+The first math experiments seemed to support the first idea: across 48 rank-16 runs, held-out prediction gain explained 56\% of the variation in $\Rstar$. But that relationship covered only a narrow range of gains. We therefore rewrote the same target answers in five deterministic styles, ranging from short plain responses to symbolic ones. These rewrites nearly doubled the learned prediction gain, from 0.555 to 1.062 bits per token, while $\Rstar$ moved only from 0.684 to 0.763. A separate 16-fold optimizer-budget sweep changed the amount learned with the content fixed and also failed to produce the expected rate increase. The size of the behavioral improvement is therefore not enough to determine the required rate.
 
-Changing the frozen receiver gives a sharper test. Five corpora were trained on both Mistral-7B and Qwen2.5-7B with the same rank, number of training examples, epochs, and codec ladder. Only dialogue remains in the same position when the corpora are ordered from cheapest to most expensive. Instruction tuning moves from the cheapest Mistral arm to the second-most expensive Qwen arm; summarization and math move in the other direction.
+We next changed the frozen model while keeping the fine-tuning setup fixed. The same five corpora were trained on Mistral-7B and Qwen2.5-7B with the same LoRA rank, number of examples, epochs, and codec. If a corpus had an intrinsic adapter cost, its ordering should remain similar across the two receivers. It did not: only dialogue kept the same position, while instruction tuning, summarization, and math changed substantially in relative cost.
 
 \begin{table}[!htbp]
 \centering\small
@@ -161,7 +158,7 @@ Dialogue & 0.913 & 1.176 \\
 \label{tab:model-corpus-rate}
 \end{table}
 
-To stress-test the apparent link between learning gain and rate outside the original math setting, we then added structured tasks on which fine-tuning could change behavior much more strongly. The clearest counterexample is XBRL tag extraction: Mistral exact match rises from 0.004 to 0.833 and held-out prediction gain reaches 1.747 bits per token, yet its mean $\Rstar$ is 0.371 bits per value, the lowest arm in the campaign. Across 38 pooled task--model arms, prediction gain and $\Rstar$ correlate $-0.37$. This rejects a positive cost law; the negative correlation is descriptive and does not establish an inverse law.
+A stronger counterexample came from tasks where fine-tuning changes behavior much more dramatically. On XBRL tag extraction, Mistral exact match rises from 0.004 to 0.833 and held-out prediction gain reaches 1.747 bits per token, yet its mean $\Rstar$ is only 0.371 bits per value---the lowest measured arm in the campaign. Across 38 pooled task--model arms, prediction gain and $\Rstar$ correlate $-0.37$. We do not interpret the negative correlation as a law; its role is simply to reject the idea that larger behavioral improvements must cost more bits.
 
 \begin{figure}[!htbp]
 \centering
@@ -170,7 +167,7 @@ To stress-test the apparent link between learning gain and rate outside the orig
 \label{fig:pooled-gain-rate}
 \end{figure}
 
-The earlier MetaMath controls still suggested that content diversity can matter, so we replicated a fixed-example diversity intervention on two structured tasks and both frozen receivers. A 36-run panel holds the total number of training examples fixed while changing SQL domains or XBRL companies, with three seeds on both base models. XBRL $\Rstar$ rises for all six matched model--seed pairs. SQL spans a wider range of domain counts but gives only small, seed-dependent changes.
+The earlier math experiments still suggested that content diversity can matter, so we tested that effect on two structured tasks and both base models. We held the total number of training examples fixed while varying the number of SQL domains or XBRL companies represented in training. XBRL shows the same direction in all six matched model--seed comparisons; SQL changes much less and inconsistently across seeds.
 
 \begin{table}[!htbp]
 \centering\small
@@ -188,8 +185,6 @@ XBRL & Qwen2.5-7B & 10 $\rightarrow$ 30 & 0.397 $\rightarrow$ 0.469 & 3/3 \\
 \label{tab:diversity-replication}
 \end{table}
 
-The XBRL result does not isolate abstract information. The groups are companies, and held-out examples cover all companies, so group count changes support coverage and training content together. Answer entropy remains nearly flat, which rules out a simple label-entropy account. Exact-match codec thresholds are too sparse and often hit the lowest scored rate, so the comparison uses the fully bracketed held-out-likelihood curves.
-
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=.98\linewidth]{fineqcomp/plots/diversity_replication.pdf}
@@ -197,17 +192,21 @@ The XBRL result does not isolate abstract information. The groups are companies,
 \label{fig:diversity-replication}
 \end{figure}
 
-These failures pointed to a different model-relative object: not information intrinsic to the corpus, but the collection of corrections the supervised data requests from the frozen receiver. We screened ten measures from one frozen-model pass over 256 training examples in each of 78 model--dataset--seed cells. They cover target code length, surprise concentration, representation rank, output-residual rank, and random sketches of the target gradients. For a scored token, the output-head gradient factors as
+The XBRL intervention is not a clean measure of abstract diversity: increasing the number of companies also changes which companies the adapter sees during training, while the test set covers all companies. The result may therefore partly reflect support coverage. Nearly constant answer entropy rules out a simple label-entropy explanation, but a cleaner diversity intervention is still needed.
+
+At this point, the most plausible remaining quantity was not information in the dataset alone, but the corrections that the dataset asks a particular frozen model to make. We screened ten model-relative statistics that can be computed from one frozen-model pass over 256 training examples. The most useful family came from the token gradients. For a scored token, the output-head gradient factorizes as
 \[
 g_{it}=h_{it}\otimes\left(p_{it}-e_{y_{it}}\right),
 \]
-where $h_{it}$ is the receiver's hidden state, $p_{it}$ its next-token distribution, and $e_{y_{it}}$ the target indicator. Fixed random projections reduce both factors before their outer product. The resulting empirical second moment $F=n^{-1}G^\top G$ describes how many correction directions the dataset requests and how large they are. The main scalar is
+where $h_{it}$ is the hidden state, $p_{it}$ the model's predicted distribution, and $e_{y_{it}}$ the correct target. Intuitively, one factor describes the representation the model is using and the other describes how its prediction needs to change.
+
+We project these factors to a manageable dimension and summarize the spectrum of their empirical second moment $F=n^{-1}G^\top G$. Our main scalar is
 \[
 I_{\mathrm{corr}}(D;M)=\log\det(I+F)=\sum_j\log(1+\lambda_j(F)).
 \]
-It is conditional on both dataset $D$ and frozen model $M$: changing either changes the residuals, hidden states, and gradient spectrum.
+It grows when the requested corrections are large and spread over many independent directions. Crucially, it depends on both the dataset $D$ and the frozen model $M$: changing the receiver changes its hidden states, its errors, and therefore the correction spectrum.
 
-The reduction first averages the three seeds, then merges four exact data reuses between the high-gain and diversity panels. This leaves 22 distinct model--dataset arms in seven task families. Table~\ref{tab:relative-info-screen} reports the main screens. The permutation test shuffles $\Rstar$ within each model and uses the largest result across all ten candidates, which adjusts for choosing the best measure on this panel. The task-held-out fit leaves one whole family out and uses a model intercept plus one logged measure.
+After averaging seeds and removing exact data reuses, the comparison contains 22 distinct model--dataset conditions across seven task families. We evaluate each candidate both by how well it orders $\Rstar$ within a model and by how well it predicts a task family left out of fitting. Because ten measures were screened on the same data, the reported permutation test also corrects for selecting the best candidate from that set.
 
 \begin{table}[!htbp]
 \centering\small
@@ -227,11 +226,11 @@ Model-only fit & --- & --- & 0.264 & --- \\
 \label{tab:relative-info-screen}
 \end{table}
 
-The correction spectrum also recovers the controlled split. Log-volume is nearly flat as SQL groups increase, with slopes $-0.0008$ and $+0.0031$ per doubling on Mistral and Qwen, but rises on XBRL with slopes $+0.0364$ and $+0.0353$. Effective rank retains a positive residual relation after model and task intercepts are removed ($r=0.566$). Its median seed coefficient of variation is 0.045; log-volume's is 0.018. Neither is a renamed learning-gain measure: log-volume has Spearman correlation $-0.275$ with held-out gain across the distinct arms.
+The correction spectrum also follows the earlier SQL/XBRL contrast: its log-volume is nearly flat as SQL diversity increases but rises with XBRL diversity on both base models. It is not simply another name for learning gain; across the distinct conditions, correction log-volume and held-out gain have Spearman correlation $-0.275$.
 
-This is the first proxy to clear the internal screen, but the panel remains a discovery set. The sketch covers the output-head gradient factor rather than the full LoRA Fisher, the same arms selected and assessed the ten candidates, and the receivers are only two 7B models. The current claim is therefore that a correction-gradient spectrum is a credible model-relative measure of learned-dataset information and predicts the measured thresholds in this panel. A locked prospective model--task panel must test the fixed definition before it becomes a scaling law.
+This is our strongest current predictor, but it was discovered and evaluated on the same set of tasks. It also uses a projected output-head gradient rather than the full LoRA Fisher, and the study contains only two 7B receivers. We therefore treat the correction spectrum as a promising model-relative hypothesis, not as an established scaling law. The next decisive test is a new model--task panel with the measure fixed in advance.
 
-Even a useful task-level predictor could be misleading if the adapter carrier itself imposed a large structural cost. We therefore returned to two substrate controls: how whole-file rate scales with LoRA rank, and whether broad layer location can guide bit allocation. Quadrupling rank from 16 to 64 raises whole-file $\Rstar$ by about threefold, from 28.6 to 82.7 Mbit in the 400-problem arm and from 41.4 to 129.3 Mbit in the 32,000-example arm. This is closer to container scaling than to a fixed task message. At matched 0.5- and 1.0-bit budgets, uniform allocation also beats starving the early, middle, or late third of layers; starving late layers costs most. Weight-update RMS stays nearly flat across depth while representation shift grows toward the last layer. No one band is dispensable in this test.
+Finally, we checked whether the adapter architecture itself imposes a large cost independent of task content. Quadrupling LoRA rank from 16 to 64 increases the whole-file $\Rstar$ by roughly threefold in two matched conditions, suggesting that a substantial part of the message scales with the carrier. We also asked whether broad layer location could guide bit allocation. At matched 0.5- and 1.0-bit budgets, uniform precision beats starving the early, middle, or late third of the network; starving late layers hurts most. Weight-update RMS is almost flat across depth, while the induced representation shift grows toward the final layers.
 
 \begin{figure}[!htbp]
 \centering
@@ -249,13 +248,11 @@ Even a useful task-level predictor could be misleading if the adapter carrier it
 \label{fig:rank-location}
 \end{figure}
 
-The location control also closes the loop with the failed matrix-row allocator. Uniform coding again wins, but the representation-shift curve explains part of the sensitivity: small changes accumulate with depth, so the last layers show a larger functional displacement even though training moves adapter weights by similar RMS in each band.
+These controls reinforce the earlier RMSE result: no simple parameter count or global reconstruction norm tells us which bits preserve behavior. The required rate depends both on the adapter used to carry the update and on what the frozen model must change to solve the task.
 
 \FloatBarrier
 \subsection{Takeaways}
 
-Exact serialization asks how short a usable learned update can be, rather than how large an adapter was trained. The strongest current claim is conditional: the behavior-preserving bit budget tracks the spectral volume of corrections requested by the learned dataset relative to its frozen receiver. It does not track information intrinsic to the dataset, base loss, or the amount learned alone. Content diversity can shift the threshold at a fixed number of training examples, but the XBRL/SQL split shows that this effect depends on task structure.
+The main methodological result of this chapter is straightforward: if we want to ask how much information a fine-tune writes, we should measure the size of an actual reloadable update that preserves a stated behavior, rather than infer it from LoRA rank or weight error.
 
-Weight RMSE, source entropy, behavioral gain, divergence from the base model, rank, task type, and layer location each expose part of the system; none gives a task-independent law. The correction spectrum is the first tested measure that predicts across task families and follows the SQL/XBRL contrast, but it still needs a prospective test. In the five-corpus Mistral panel, about one bit per adapter value retains essentially all held-out gain, which is the broad practical result in that substrate. Below that rate, the ordering depends strongly on corpus, base model, and the model-relative corrections requested by the data.
-
-\FloatBarrier
+The experiments then rule out several simple predictors of that rate. It is not set by source entropy, base-model loss, or the magnitude of the behavioral improvement alone. The same corpus can require different rates on different frozen models, and content diversity matters in some tasks but not others. The strongest current explanation is model-relative: the rate tracks the number and magnitude of correction directions that the training data asks the frozen model to make. That result is promising but still needs prospective replication.
