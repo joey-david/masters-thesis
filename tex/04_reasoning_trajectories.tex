@@ -1,56 +1,168 @@
-\section{Reasoning Trajectories and Objective-Relative State}
+\section{Reasoning trajectories and objective-relative state}
 \label{sec:reasoning}
 
-\subsection{Related work and precise gap}
-\TODO{Full verified related-work section. Cover mechanistic/representation analyses of CoT, information-peak/state-abstraction work, causal activation evidence, continuous latent reasoning, and CoT compression. End with the gap: prior work usually privileges one notion of useful state; we test whether a decomposition is canonical across objectives.}
+\subsection{Related work and gap}
 
-\subsection{Initial hypothesis: latent solution objects}
-\TODO{Explain the motivating idea and why discrete reusable internal updates would be scientifically useful. Preserve the chronology: this was a hypothesis to test, not a conclusion assumed in hindsight.}
+Chain-of-thought prompting elicits written intermediate reasoning before an answer \parencite{wei2022chain}. Mechanistic work asks where intermediate variables or step-specific signals appear. Hidden-state studies decode arithmetic state, correctness, or stage information, while latent-reasoning methods feed hidden representations forward without text. Each method chooses a target notion of state. This study asks whether one decomposition works across several targets and whether decoded state forms a causal interface that survives repeated use.
 
-\figplaceholder{Conceptual diagram: token sequence $\rightarrow$ latent trajectory $\rightarrow$ hypothesized discrete solution-object updates.}
+We began with a concrete picture: a long verbal derivation might hide a shorter sequence of internal updates. Stable updates across wording and context could help explain how reasoning is organized and support more efficient training or handoff. The tests were easy to fool, however. A projection can make almost any trace look segmented, and a probe can recover labels that the base computation does not use. We moved in stages from visual structure to held-out prediction, intervention, and recursive state use.
 
-\subsection{Building the trajectory measurement pipeline}
-\TODO{Only the methodological pieces needed to understand the experiments: generation, hidden-state capture, sentence/token alignment, symbolic updates, correctness labels, and reproducibility. Avoid software-tour prose.}
+\subsection{Layer schedules: a qualified pilot}
 
-\subsection{First-wave hypotheses and falsification}
-\TODO{Condense H1--H5 into one table: question, measurement/intervention, result, interpretation. Include text-vs-latent boundaries, localized updates, process-isomer patching, operation discovery, and correctness prediction.}
+A paired layer study expressed the same linear problem in symbolic, natural, ornate, and length-padded symbolic form. Only problem quartets answered correctly in all four forms entered the main analysis. Fitted middle-stage widths were 0.593, 0.667, 0.667, and 0.704, respectively; natural minus symbolic was $+0.074$ with a paired 95\% interval $[0.037,0.111]$. Phrasing changes the observed layer schedule, but padding changes it as well, so token position and length remain confounds.
 
-\figplaceholder{Table: H1--H5 hypothesis / decisive test / result / conclusion.}
+Layer-14 suppression and symbolic-to-natural patching were directional on one clean pair and did not yield stable statistical results. Finite-difference gain estimates local sensitivity; it is not a global Lipschitz constant. A separate ChaCAL depth pilot reached exact accuracy 1.00, 0.64, and 0.58 at depths 1--3 before falling near chance. Its held-out depths used unseen positions, some tasks allowed parallel reductions, and reinforcement learning omitted the hard depths. The owning repository therefore marks the depth claim as invalid. Its role in this report is to explain the stricter gates used in later causal work.
 
-\subsection{Distributed updates rather than sharp latent events}
-\TODO{Use matched-window path length, peak share, effective width, and net/path ratio. Replicate across SmolLM and Qwen where available.}
+\begin{figure}[p]
+\centering
+\includegraphics[width=.98\linewidth]{reasoning/plots/stage_markers.png}
+\caption[Task-conditioned stage-marker pilot.]{Task-conditioned stage-marker pilot on paired symbolic, natural, ornate, and padded-symbolic forms. Dashed lines show fitted boundaries. Several marker curves overlap, and the padded control shifts the inferred schedule, so the figure supports a form-sensitive observation but not a language-specific stage claim.}
+\label{fig:stage-markers}
+\end{figure}
 
-\figplaceholder{Compact distributed-update figure: path percentile, peak share, effective width, net/path for both model families.}
+The pilot changed our standard for a mechanistic claim. A layer curve alone was no longer enough. Later tests had to survive prompt-length controls, choose intervention layers without looking at the test set, and change the downstream variable named by the hypothesis.
 
-\subsection{Structure exists, but requires an ontology}
-\TODO{Contrast poor raw cosine geometry with high supervised operation-decoding AUC. This prevents the incorrect conclusion that the latent trajectory contains no structure.}
+\subsection{Trajectory pipeline and first hypotheses}
 
-\figplaceholder{Paired bars: raw-geometry AUC versus supervised projected AUC, SmolLM and Qwen.}
+The main trajectory corpus records generated text, correctness, token-to-sentence alignment, symbolic updates from a restricted arithmetic parser, and hidden states by token and layer. Projections are fitted on training data so held-out labels cannot select a representation. Question-disjoint splits keep every solution on one side of the split. Exact parsers or symbolic simulators replace model judges where the task permits.
 
-\subsection{No free lunch on the sentence lattice}
-\TODO{Main objective-relative thought-unit result: define objectives, segmenters, boundary budget, regret/rank-reversal criterion, held-out evaluation, cross-objective transfer, and model replication.}
+The first five hypotheses searched for a native solution object: a compact update that coincides with a text boundary, produces a localized latent event, transfers between process-isomorphic traces, groups by operation, and predicts correctness. None of the tests found one event with all five properties. Text boundaries did not define a stable latent partition. Symbolic changes spread across windows and changed direction instead of appearing as one sharp jump. Prespecified attention- and MLP-output process-isomer patches did not rescue target behavior. Raw geometry gave weak operation groups, although supervised projections decoded operations. In the tested corpus, sentence summaries predicted correctness better than the proposed latent segments. Objective-specific structure remained plausible; a single naturally exposed event did not.
 
-\figplaceholder{Headline heatmap: objective $\times$ segmenter performance.}
-\figplaceholder{Headline regret matrix: no single partition dominates across answer information, symbolic updates, correctness, and compression.}
-\figplaceholder{Qualitative trace: overlay objective-specific boundaries on the same reasoning trace.}
+We initially treated the five hypotheses as routes to the same object. They were testing different properties: alignment to text, localization in geometry, causal portability, semantic identity, and predictive value. Averaging their disagreement would have hidden that distinction. We designed the token-lattice experiment to hold the candidate boundaries and budget fixed while changing only the objective.
 
-\subsection{From native state to explicit state interfaces}
-\TODO{Chronological continuation after July 2: state materialization, first-wave causal failures, explicit handoff hypothesis, matched controls, finite-rate interfaces. Make clear what prompted each step.}
+\subsection{No universal partition of the token lattice}
 
-\subsection{State materialization and interchangeability}
-\TODO{Report the distinction between explicit decodable state and implicit endpoints that retain path information; include appropriate random/subspace controls.}
+Every generated-token transition was eligible as a boundary. Each trace received the same boundary budget: its number of verified symbolic updates, capped at 64, with a primary minimum separation of four tokens and sensitivity checks at one and eight. Utilities were normalized so random selection has expectation zero and the target oracle has score one.
 
-\figplaceholder{Native-factorization / materialization result figure.}
+The four objectives were: increase in alignment with a gold-solution state; completion of a verified symbolic update; absolute change in a train-only correctness probe; and change between local mean states in train-only PCA space. Baselines included sentences, raw magnitude, cosine and curvature peaks, random boundaries, each objective oracle, and supervised detectors that did not receive the objective score as an input.
 
-\subsection{Finite-rate explicit state handoff}
-\TODO{Define the interface task and rate-controlled state codes. Report closure and answer accuracy across 2/3/4-bit interfaces, recursive reuse, and context-bound controls. Distinguish semantic-state equivalence from exact-token identity.}
+The held-out evaluation covered 310,044 SmolLM3-3B tokens and 61,691 Qwen3-14B tokens. Oracle overlap within four tokens was low: F1 ranged from 0.098 to 0.210 for SmolLM and 0.130 to 0.294 for Qwen. The best worst-objective utility was only 0.020 and 0.080, and remained stable under the one/four/eight-token sensitivity sweep. Sentence boundaries scored near zero on answer and symbolic-object utility. Raw cosine peaks retained some answer utility, about 0.30 in both models, so the result is non-dominance rather than absence of shared signals.
 
-\figplaceholder{Rate--capacity figure for explicit state interfaces.}
+Supervised detectors recovered their own boundaries with held-out ROC--AUC 0.999/0.984/0.849/0.868 for SmolLM and 0.998/0.992/0.859/0.825 for Qwen across answer/object/correctness/compression. Strong diagonal decoding rules out the explanation that the trace contains no structure. Weak cross-objective utility shows that the learned structures differ.
 
-\subsection{Closure training and long-horizon reliability}
-\TODO{Compare transition-closure supervision against matched endpoint-only training; report long-horizon gains and error accumulation. State one-seed / restricted-algebra limitations prominently.}
+\begin{figure}[p]
+\centering
+\begin{subfigure}[t]{.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{reasoning/plots/objective_matrix.png}
+\caption{Normalized utility; random is zero and the target oracle is one.}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{reasoning/plots/regret_matrix.png}
+\caption{Normalized regret; the target oracle is zero.}
+\end{subfigure}
+\caption[Objective-relative partition utility and regret.]{Objective-relative partitions on the primary SmolLM corpus. Rows are segmentation rules and columns are utilities. The strong diagonal and poor off-diagonal values show rank reversals: a boundary rule that is optimal for one use can be actively poor for another. Qwen replication and minimum-gap checks show the same non-dominance pattern.}
+\label{fig:objective-matrices}
+\end{figure}
 
-\figplaceholder{Closure-training comparison and local-vs-global reliability figure.}
+The supervised diagonals rule out an absence of structure. Instead, the visible structure changes with what the partition must preserve. The same token can mark the formation of an answer direction, carry little value for a symbolic update, and matter again for local compression. This result shifted the project from searching for one partition to testing utility-relative ones.
+
+\subsection{Judged semantic spans}
+
+A larger model labeled 415 overlapping windows from concise correct SmolLM traces with nine edit types: orient, bind variable, add relation, derive value, verify, correct error, plan, extract answer, and mixed. Exact text matching aligned 406 windows. After removing spans that touched internal window edges, the audit retained 1,761 intervals over 58 traces; the median span was 29 tokens.
+
+A question-disjoint latent detector reached AUC 0.982 for all semantic boundaries and 0.969 for boundaries away from sentence ends. A matched text character model reached 0.956 and 0.775. The latent advantage off sentence boundaries was 0.193 with a question-bootstrap interval $[0.115,0.301]$. Eight non-mixed semantic types were decodable from held-out span activations with macro one-vs-rest AUC 0.891 and macro-F1 0.487, but lexical TF--IDF reached AUC 0.892 and their combination 0.901. Unsupervised PCA-cosine reached only 0.623. Thus the ontology is present, but labels and lexical cues select it.
+
+This semantic oracle still scored $-0.012/0.043/0.036/0.324$ on the four earlier utilities. The learned semantic detector recovered semantic utility but not answer or symbolic-object utility. The result uses only 12 held-out GSM-Symbolic traces selected for concise correct reasoning; its labels are silver rather than human gold. It strengthens the claim of objective-relative state but does not support task-general semantic units.
+
+We added semantic labels because the first four objectives might have missed units that a human reader would name. The ontology revealed a strong latent boundary signal away from sentence ends, but cross-objective transfer remained weak. A readable semantic edit ontology is therefore one useful decomposition among several, rather than the unique partition of the trace.
+
+\subsection{Exact control: snapshot information is not memory}
+
+The bounded decision-rate repository supplies a model-free control. Three finite latent families, six held splits, eight budgets, and four horizons form 90 task cells and 1,710 complete representation rows. Exact source weights and exact finite-horizon planning ensure that each controller plans through its own memory update. Forty independent tests and a raw-row audit verify split, capacity, planning, and gate contracts.
+
+At evaluation start, full public history and a 12-bit text suffix have identical support, state mutual information (2.512 bits), and path leakage (1.781 bits) in all 90 cells. They match in regret in zero cells: pooled text regret is 7.19 times full-history regret. At horizon 32, regret is 2.20 for full history and 30.91 for text. The source history has depth two, so both representations encode the same initial observations; the suffix then forgets future observations during continuation. Initial decodability is therefore insufficient for long-horizon use.
+
+A 12-bit explicit field state removes 79.3\% of no-memory regret, compared with 93.7\% for full history and 54.8\% for text. It matches full history in every non-continual split but fails when held goals require fields not selected by the training objective. Capacity must be paired with an allocation rule that retains transfer-relevant state. This is an exact finite construction, not learned-model evidence.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=.84\linewidth]{reasoning/plots/closed_loop_regret.png}
+\caption[Exact closed-loop regret over horizon.]{Exact closed-loop regret over continuation horizon. Full history and the 12-bit text suffix have identical initial support, state mutual information, and path leakage, yet the suffix forgets later observations and its regret grows rapidly. Values are exact means over the 90 task cells in the repaired Phase 0/1 study.}
+\label{fig:closed-loop-regret}
+\end{figure}
+
+We introduced the exact study to separate representation failure from model and decoder error. The environment, posterior, planner, and rollout are all exact. The comparison isolates the missing property: a representation must summarize the current history and its update rule must retain the needed information as new observations arrive.
+
+\subsection{Native language-model state and explicit handoff}
+
+On balanced three-bit addition programs, frozen Qwen2.5-32B reads a supplied state and applies a local update perfectly. At horizon two it synthesizes the history endpoint with 76.98\% accuracy but composes that endpoint with a final pointer table at only 13.44\%, near eight-state chance. Removing the history and passing the model's predicted state to a second call raises accuracy to 76.98\%; a gold handoff and stepwise decimal execution reach 100\%. State information exists, but the one-pass prompt does not route it into the final operation.
+
+Hidden probes also retain path detail, and the tested late-layer state subspace does not beat a random subspace control. This prevents a stronger claim that the frozen model exposes one transferable native code. The explicit handoff is a causal repair created by the evaluation protocol.
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}[t]{.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{reasoning/plots/native_factorization.png}
+\caption{Local competence with failed serial composition.}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{reasoning/plots/explicit_handoff.png}
+\caption{Deleting history after an explicit handoff.}
+\end{subfigure}
+\caption[Native state factorization and explicit handoff.]{Frozen Qwen2.5-32B state-factorization assay. Read and Update are perfect, and Synthesize is often correct, yet one-pass Compose stays near chance. Passing the predicted state to a fresh call restores the synthesis rate at horizon two; gold and stepwise controls are perfect.}
+\label{fig:native-handoff}
+\end{figure}
+
+The factorization result changed the next experiment. We had searched for a hidden location to patch, but the model could perform each local operation without routing the endpoint through the final lookup. We stopped searching for an assumed native interface and supplied one explicitly, then tested what properties it needed.
+
+\subsection{Rate, shared meaning, and closure}
+
+Qwen2.5-7B LoRA adapters were trained to emit one opaque state token. For an eight-state addition task, code alphabets of size 4, 8, and 16 give declared rates of 2, 3, and 4 bits. Producer, consumer, and test contexts are disjoint. The two-bit code has perfect quotient closure and exactly 50\% answer accuracy, its information ceiling. The canonical three-bit code scores 74.27\% at horizon two and 42.19\% at horizon sixteen. A redundant four-bit code scores 97.71\% and 59.48\%. Context-bound dictionaries remain near chance, so surface capacity without shared meaning is not enough.
+
+Matched closure training supervises code-plus-one-rule to next-code; endpoint training supervises full-history to endpoint code. Both use 20,000 forwards, 5.12 million fixed-padding tokens, and 20,000 one-token targets. At horizons eight and sixteen, redundant closure reaches 97.81\% and 97.08\%, beating endpoint training by 43.85 and 44.58 points. Across five shifted history families it averages 93.25\% at horizon sixteen versus 48.50\% for the endpoint control. These one-seed addition results show the value of closure, but may reflect fitting a small transition table.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=.74\linewidth]{reasoning/plots/rate_sufficiency.png}
+\caption[Full-support proof-state rate control.]{Full-support rate and code control in the later proof-state suite. A three-bit code cannot recover any singleton four-bit ledger. Canonical and padded codes recover all states; the aliased code has enough surface symbols but poorer downstream behavior. Bars aggregate the committed evaluation summaries.}
+\label{fig:rate-sufficiency}
+\end{figure}
+
+The addition study separated questions that earlier tests had joined. The two-bit code imposed an exact information ceiling. Context-bound dictionaries tested whether producer and consumer shared a meaning, while transition training tested closure under self-produced codes. After these controls behaved as predicted, we asked whether the positive result merely fit a tiny addition table.
+
+\subsection{Canonical proof state and failure controls}
+
+The latest proof-state confirmation uses 16 four-bit fact ledgers. Three Qwen seeds compare four code contracts: a lossy three-bit code $s\bmod 8$, one canonical token per state, a five-bit padded code $2s$, and a five-bit path-aliased code $2s+b_{\rm path}$. Every condition uses equal data and compute. Evaluation performs one model call per Horn rule, discards prior rules, and supplies only the final code to the consumer.
+
+Canonical and padded codes recover all 16 states in all three seeds and keep exact state through horizon 256. Mean final accuracy is 97.22\% for the canonical interface versus 72.22\% one-pass, a paired gain of 25 points with context-bootstrap interval $[12.50,38.89]$. The three-bit code has one bit of residual state uncertainty and 0\% exact state. Extra unused code symbols do not hurt the padded code. Path aliases do: at three active deductions the aliased code has only 30--40\% exact state, versus 100\% for the matched-size padded code; at horizon 256 its local closure is 63.85--71.50\%.
+
+Two preset checks fail. The easy full-support bank shows no padded--aliased gap, and gold-code consumers do not exceed 95\% for every surface and seed. The result therefore supports enough rate, one stable name per state, and exact closure in this finite proof system. It does not show that every sufficient surface is equally readable, that 256 inactive rules equal 256 deductions, or that the interface saves inference compute: a horizon-256 case uses 257 model calls.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=.78\linewidth]{reasoning/plots/gauge_closure.png}
+\caption[Matched-rate path-alias control.]{Matched-rate alias control. All code families cover the full state set, but adding one bit of path-dependent naming leaves one bit of conditional alias entropy and reduces exact state to 30--40\% after three active deductions. The dashed canonical reference remains exact.}
+\label{fig:gauge-closure}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=.98\linewidth]{reasoning/plots/depth_length.png}
+\caption[Surface length, active depth, and behavior.]{Length, active depth, and behavior in the canonical causal-state suite. Padding the rule stream at fixed active depth leaves exact state unchanged, whereas increasing state-changing deductions damages the aliased code. Canonical final behavior remains high through the padded horizons.}
+\label{fig:depth-length}
+\end{figure}
+
+A codebook can have ample rate while assigning several names to the same semantic state. Those names retain irrelevant path information. The matched five-bit padded code shows that extra capacity alone is harmless. The aliased code uses the extra symbol to preserve history and loses recursive closure. This control ties the explicit interface to the objective-relative result: information can be available yet make a state less stable when it is irrelevant to the chosen future.
+
+Mixed register programs show the other limit. Three Qwen seeds apply add, XOR, swap, and conditional updates to their own supplied state with 88.55--90.69\% local semantic accuracy, yet complete horizon-32 accuracy is 7.92\%, versus 5.83\% one-pass and 6.25\% chance. Mistral gives the same failure pattern. A fifth code bit raises two complete seeds only to 12.81\% and 12.19\%. Modest local error compounds until the state loses almost all useful information.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.76\linewidth]{reasoning/plots/local_global_reliability.png}
+\caption[Local versus global register reliability.]{Local versus global reliability on held-out mixed register programs. Conditional transition accuracy is computed from the state actually supplied at each recursive call, so earlier errors do not make a later correct local update appear wrong. Roughly 89\% local accuracy still yields 7.9\% complete horizon-32 accuracy.}
+\label{fig:local-global}
+\end{figure}
+
+The register failure limits the scope of the interface result. The producer learns each operation well enough to score strongly in a one-step table, but about 31 self-fed calls amplify its remaining semantic errors. A redundant bit does not repair an inaccurate transition kernel. The next measure should model how semantic confusions propagate under self-conditioned use instead of relying on gold-input one-step accuracy.
 
 \subsection{Takeaways}
-\TODO{Central conclusion: useful state decompositions exist, but native reasoning does not support a strong claim of one context-free canonical thought unit; explicit interfaces can create reusable state contracts under controlled conditions.}
+
+The evidence rejects three shortcuts. A useful label need not coincide with a sharp geometric event. A decodable snapshot need not be useful memory. Enough nominal state symbols do not ensure a reliable recursive interface. Useful decompositions exist, but they depend on the utility. In controlled tasks, an explicit state channel can become sufficient and closed when its rate, naming, and self-conditioned transition accuracy each pass their own test.
+
+Each failure narrowed the next test. Weak layer and boundary evidence prompted explicit objective comparisons. Their disagreement made us separate state content from state use. Failed native composition prompted an explicit handoff, whose gains then required rate and closure controls. Success on addition was followed by proof and register stress tests. The proof task shows that a small canonical state can compose under controlled conditions. The register task sets the present limit of that result.
+
+\FloatBarrier

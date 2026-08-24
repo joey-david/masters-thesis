@@ -1,21 +1,55 @@
 \section{Introduction}
 \label{sec:introduction}
 
-\subsection{Internship context}
-\TODO{MILeS/LAMSADE, supervision, broad research setting. Keep institutional context short and relevant to the scientific work.}
+\subsection{Internship context and research question}
+
+This work was carried out with the MILeS research group at LAMSADE during a master's internship from May to August 2026. The starting question concerned information-theoretic limits on quantized fine-tuning: if a pretrained model is fixed, how much new information must a learned update contain to preserve behavior acquired from a dataset? The first pilots exposed a measurement problem. Rank, parameter count, and nominal precision bound the size of a container. They do not measure the smallest file that preserves the learned behavior.
+
+We did not begin with the definitions used in this report. ``Information in a fine-tune'' could mean the number of trainable values, their nominal precision, the compressibility of the training corpus, or the change in predictions after training. Each meaning calls for a different experiment. Before testing a rate law, we needed a quantity that could survive simple controls. When a proxy failed, we changed the measurement instead of adding runs to the same weak test.
+
+The same problem appeared at inference time. A reasoning trace contains many token vectors, but its length and width do not show whether later computation can reuse a smaller state. A state may be decodable without being causally sufficient. An explicit code may name every state and still drift when the model consumes its own outputs. The thesis therefore asks how much task-relevant information crosses a learned update or reasoning-state interface, and what that representation must preserve for behavior to remain stable.
+
+We did not assume that the two projects shared one theory. The connection appeared after the same kind of failure recurred in both. A representation could look compact or accurate under an internal metric while losing the behavior that mattered. Adapter RMSE improved in cases where task behavior collapsed. A latent label was decodable even when a later operation failed to use it. We began to ask the same questions in each project: who receives the representation, what side information is available, what object is actually constrained, and what happens after the real decoder or update rule consumes it?
 
 \subsection{Research trajectory}
-\TODO{Chronological map: information-theoretic fine-tuning pilot $\rightarrow$ reasoning trajectories and state abstractions $\rightarrow$ return to rigorous update-rate measurement $\rightarrow$ unification.}
 
-\figplaceholder{Timeline figure: May--August 2026. Show hypotheses, pivots, and decisive experiments rather than a software-development timeline.}
+The work passed through four phases. Small QLoRA pilots first varied rank, data repetition, model scale, and the two LoRA factors. They found a low-rank performance knee and a marked $A/B$ asymmetry. A small ARC evaluation gave little signal. Nominal adapter capacity and a noisy downstream score were therefore poor main axes.
+
+The next phase examined native reasoning trajectories. A capture and alignment pipeline supported tests of text boundaries, localized symbolic updates, causal process-isomer patches, operator structure, and correctness prediction. These tests did not support a context-free ``solution object'' that appears as one sharp latent event. We then compared partitions of the same token lattice under answer, symbolic-update, correctness, and compression objectives. Each ontology was learnable, but the best boundaries changed with the objective.
+
+We then moved from observing hidden states to testing state contracts. A bounded exact-controller study isolated the difference between information at one instant and memory that stays useful during a rollout. Language-model experiments separated state capacity, causal sufficiency, shared code meaning, and closure under repeated updates. A controlled proof state worked; mixed register programs failed in replicated tests.
+
+Finally, the fine-tuning study restarted with exact rate accounting. Every codec point comes from one fixed trained adapter. The code is written to disk, decoded, reloaded, and evaluated. File rate, weight error, prediction gain, and exact task accuracy remain separate measures. The completed panels show that required rate depends jointly on the learned dataset and frozen base model. Ordinary source information, output change, and weight error fail as predictors. A new screen instead measures the spectrum of corrections that the training targets request from each frozen receiver. Its log-volume is the strongest within-model predictor in the two-model panel, while content diversity still moves the threshold on XBRL but not reliably on SQL.
+
+\begin{figure}[t]
+\centering
+\small
+\fbox{\parbox[c][2.2cm][c]{.19\linewidth}{\centering \textbf{May}\par Rank and data-compressibility pilots}}
+$\longrightarrow$
+\fbox{\parbox[c][2.2cm][c]{.19\linewidth}{\centering \textbf{June}\par Native trajectory hypotheses}}
+$\longrightarrow$
+\fbox{\parbox[c][2.2cm][c]{.19\linewidth}{\centering \textbf{July}\par Objective-relative and causal state tests}}
+$\longrightarrow$
+\fbox{\parbox[c][2.2cm][c]{.19\linewidth}{\centering \textbf{August}\par Exact update rate and synthesis}}
+\caption[Research sequence, May--August 2026.]{Research sequence. Failed or incomplete operational tests prompted each transition: nominal rank led to exact file rate, weak latent boundaries to utility-relative partitions, and decodability to causal state interfaces.}
+\label{fig:timeline}
+\end{figure}
+
+\subsection{How the account is organized}
+
+The chapters follow the order in which the questions became precise. That order differs from the layout of the codebase. ``We'' is reserved for hypotheses, choices, and changes in direction; protocols, sample sizes, measurements, and limits are stated directly. Negative results remain in the main account because they determined the next experiment. Prepared runs appear only as proposed tests and provide no empirical support.
 
 \subsection{Research questions}
+
 \begin{enumerate}[leftmargin=*]
-    \item How should the information rate of a fine-tuning update be defined and measured when the base model is shared side information?
-    \item How much update information is required to preserve learned behavior?
-    \item Do reasoning trajectories admit canonical intermediate states or thought units, or are useful decompositions objective-relative?
-    \item Can parameter-update rate and reasoning-state rate be studied within a common information-theoretic view?
+    \item How should the rate of a fine-tuning update be defined when the receiver already has the base model, adapter layout, and decoder?
+    \item How much serialized update information preserves learned behavior, and which data or model properties predict that threshold?
+    \item Do reasoning trajectories admit one useful decomposition, or does the best state depend on the downstream utility?
+    \item When can an explicit state code support causal handoff and reliable recursive use?
 \end{enumerate}
 
-\subsection{Contributions and organization}
-\TODO{State only contributions that are supported by the contribution audit. Emphasize proposed experiments, falsified hypotheses, methodological corrections, and resulting claims.}
+\subsection{Contributions and report structure}
+
+The report defines update rate as decoder-visible serialized size and evaluates every point after reload. A weight-error/behavior counterexample rejects reconstruction error as the sole codec target. Compute-matched and fixed-row studies test distinct data and content diversity. Two-model panels show that the threshold follows a model-relative correction spectrum more closely than source size or base loss, although this measure still needs a locked prospective test. Tests across two model families reject an objective-independent thought unit. Exact-controller and language-model interventions then distinguish initial state information from a state interface that remains sufficient and closed over long horizons.
+
+\Cref{sec:background} fixes notation and measurement rules. \Cref{sec:fineqcomp} presents the fine-tuning studies. \Cref{sec:reasoning} presents the layer, trajectory, exact-controller, and state-interface results. \Cref{sec:unification} states the common account, its limits, and the experiments needed to test it.

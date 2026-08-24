@@ -1,25 +1,107 @@
-\section{Technical Background}
+\section{Technical background}
 \label{sec:background}
 
-\subsection{Reasoning language models and trajectories}
-\TODO{Assume transformer attention is known. Define autoregressive generation, explicit chain-of-thought traces, token positions, layers, and hidden-state trajectory notation $h_t^{(\ell)}$. Distinguish text trajectory from latent trajectory.}
+\subsection{Text and latent trajectories}
 
-\subsection{Low-rank adaptation}
-\TODO{Introduce LoRA from first principles: $W' = W + \frac{\alpha}{r}BA$, matrix dimensions, rank, placement in transformer projections, parameter count, and the frozen base as shared side information. Explain that $A$ and $B$ need not play symmetric functional roles.}
+For prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model defines $p_\theta(y_{1:T}\mid x)=\prod_t p_\theta(y_t\mid x,y_{<t})$. A written chain of thought is the token sequence before the final answer. It differs from the latent path. Let $h_t^{(\ell)}\in\mathbb{R}^d$ be the residual-stream state at generated position $t$ and layer $\ell$. Text boundaries need not coincide with changes in $(h_1^{(\ell)},\ldots,h_T^{(\ell)})$, and a label decoded from this path need not control later computation.
 
-\figplaceholder{Diagram: frozen transformer weight $W$ plus low-rank update $BA$, with parameter counts and shared-side-information interpretation.}
+\subsection{Low-rank and quantized adaptation}
 
-\subsection{Quantized fine-tuning and QLoRA}
-\TODO{Explain quantized frozen backbone versus trainable adapter. Introduce NF4 only to the depth needed later. Make explicit that a 4-bit backbone does not imply a 4-bit learned update. Separate training-memory quantization from deployed adapter quantization.}
+LoRA keeps $W\in\mathbb{R}^{d_{\rm out}\times d_{\rm in}}$ fixed and learns
+\begin{equation}
+ W'=W+\Delta W,\qquad \Delta W=\frac{\alpha}{r}BA,
+\end{equation}
+where $A\in\mathbb{R}^{r\times d_{\rm in}}$ and $B\in\mathbb{R}^{d_{\rm out}\times r}$ \parencite{hu2022lora}. The receiver knows the frozen model and the placement of each pair, so only the learned factors and decoder metadata need transmission. The two factors have different roles: $A$ maps inputs into rank coordinates and $B$ maps them back. Equal size does not imply equal behavioral value.
 
-\subsection{Quantization, coding, and rate}
-\TODO{Explain scalar/codebook quantization, scales and metadata, nominal bits/value versus exact serialized decoder-visible bits, and why actual artifact size is the rate used later. Introduce rate--distortion intuition, held-out NLL/code length, behavioral bits written, and $\Rstar(\tau)$.}
+QLoRA stores the frozen backbone in a low-bit format while training higher-precision adapters \parencite{dettmers2023qlora}. NF4 code points suit an approximately normal weight distribution, and block scales recover local magnitude. This saves training memory. The four-bit backbone says nothing about the rate of the learned update, which must be coded after training.
 
-\subsection{Probing internal representations}
-\TODO{Linear probes, PCA/whitening where used, cosine geometry, Gram/HSIC-style statistics. Emphasize decodability $\neq$ canonical organization $\neq$ causal use.}
+\begin{figure}[t]
+\centering
+\small
+\begin{tabular}{c@{\quad}c@{\quad}c}
+\fbox{\parbox[c][1.6cm][c]{.23\linewidth}{\centering Shared frozen weight\\$W$}} &
+$+$ &
+\fbox{\parbox[c][1.6cm][c]{.30\linewidth}{\centering Transmitted update\\$A\xrightarrow{\;r\;}B$}} \\
+& $\Downarrow$ & \\
+\multicolumn{3}{c}{\fbox{\parbox[c][1.45cm][c]{.66\linewidth}{\centering Effective weight $W'=W+(\alpha/r)BA$\\evaluated inside the shared base model}}}
+\end{tabular}
+\caption[LoRA as a communication problem.]{LoRA as a communication problem. The base weight and adapter layout are shared side information. The learned factors and all metadata needed to reconstruct them form the message whose rate is measured.}
+\label{fig:lora-channel}
+\end{figure}
 
-\subsection{Causal interventions on representations}
-\TODO{Activation patching/interchange interventions, donor and recipient trajectories, positive/negative controls, matched-position controls, and what causal sufficiency would establish beyond decoding.}
+\subsection{Exact rate and behavioral distortion}
+
+An adapter file contains tensor shapes, scales, code identifiers, packed indices, selectors, and headers. Nominal bits per value count only part of the file. This report uses
+\begin{equation}
+ R(A)=8\,|\operatorname{serialize}(A)|
+\end{equation}
+and, where useful, divides by the number of values in the raw adapter. The decoder must reconstruct the tensors from that file and shared protocol; every point is evaluated after decoding from disk.
+
+Rate--distortion theory asks for the least rate that meets a distortion limit \parencite{berger1971rate,cover2006elements}. Let $L_0(D)$, $L_A(D)$, and $L_{\widehat A}(D)$ be held-out NLL for the base, raw adapter, and coded adapter. Retained gain is
+\begin{equation}
+ \rho(\widehat A;D)=\frac{L_0(D)-L_{\widehat A}(D)}{L_0(D)-L_A(D)},
+ \qquad
+ \Rstar(\tau)=\min_{\rho\geq\tau}R(\widehat A).
+\end{equation}
+$\Rstar$ is undefined if the raw adapter fails an absolute learning gate and censored if the codec ladder does not bracket the crossing. Weight RMSE, held-out NLL, and exact task accuracy are distinct distortions.
+
+\begin{figure}[t]
+\centering\small
+\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Train once\\raw adapter}}
+$\rightarrow$
+\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Encode\\rate ladder}}
+$\rightarrow$
+\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Write file\\count bytes}}
+$\rightarrow$
+\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Decode\\fresh path}}
+$\rightarrow$
+\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Evaluate\\behavior}}
+\caption[Fixed-checkpoint exact-rate measurement loop.]{The fixed-checkpoint measurement loop. Training variance is removed from the codec frontier because every point starts from the same raw adapter.}
+\label{fig:codec-loop}
+\end{figure}
+
+\subsection{Probes, state, and interventions}
+
+A probe fits a decoder on training traces and tests it on held-out questions. PCA, whitening, cosine changes, path length, and Gram statistics describe representation geometry. These measurements support different claims. Decodability shows accessible correlation. Raw geometry that beats its controls suggests an organization visible without labels. Causal use requires an intervention.
+
+Interchange replaces a recipient activation or code with one from a donor, then tests whether the output changes as the donor semantics predict. Same-state, different-state, matched-position, random-subspace, and gold-state controls separate a state effect from scale or position. An explicit handoff removes the old history and requires a second call to act using only the supplied state and a new rule. For closure, a model-produced state must remain valid after another legal update.
+
+\begin{figure}[t]
+\centering\small
+\begin{tabular}{p{.44\linewidth}p{.44\linewidth}}
+\centering\textbf{Probe} & \centering\textbf{Causal handoff}\tabularnewline[2pt]
+\fbox{\parbox[c][2.2cm][c]{.40\linewidth}{\centering history $H$ $\rightarrow$ hidden vector $h$\\$h\rightarrow$ decoded label\\\emph{Is state readable?}}} &
+\fbox{\parbox[c][2.2cm][c]{.40\linewidth}{\centering history $H$ $\rightarrow$ code $c$\\delete $H$; $(c,u)\rightarrow$ output\\\emph{Is state sufficient and reusable?}}}
+\end{tabular}
+\caption[Probe versus causal state handoff.]{Decoding and use answer different questions. A handoff removes the original history, so a successful continuation must depend on the transmitted state.}
+\label{fig:probe-handoff}
+\end{figure}
+
+\subsection{Decision state and closed-loop utility}
+
+In a partially observed control task, histories $H$ are equivalent only relative to the future decisions they support. A representation $Z=f(H)$ can have high mutual information $I(Z;S)$ with latent state $S$ at the start of evaluation and still lose useful observations later. Closed-loop regret measures the resulting decision distortion:
+\begin{equation}
+ D(Z)=V^{\star}-V^{\pi_Z},
+\end{equation}
+where $\pi_Z$ plans through the real update rule of $Z$. This prevents an evaluator from granting a small-memory controller hidden access to the full history after the first action.
 
 \subsection{Experimental conventions}
-\TODO{Compact table defining seeds, held-out splits, compute matching, rate matching, confidence intervals, exact artifact reload, pre-specified gates, and notation reused throughout.}
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{p{.23\linewidth}p{.69\linewidth}}
+\toprule
+Term & Rule \\
+\midrule
+Held-out unit & Split questions, program contexts, or latent families; never split tokens from one trace across train and test. \\
+Compute match & Equal optimizer updates and samples seen; interface controls also match forwards, padding, and targets. \\
+Rate match & Actual decoded file sizes or an exact finite code alphabet. \\
+Reload & Serialize, decode, attach to the frozen model, then score. \\
+Uncertainty & Independent seeds or bootstrap over the independent question or context. \\
+Gate & Fix learning, bracketing, or control checks before the main comparison. \\
+Status & Saved evaluation output is a result; code, a smoke test, or a launch plan is not. \\
+\bottomrule
+\end{tabular}
+\caption{Conventions used throughout the report.}
+\label{tab:conventions}
+\end{table}

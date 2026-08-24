@@ -7,6 +7,10 @@
 
 \usepackage{amsmath,amssymb,mathtools}
 \usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{array}
@@ -15,8 +19,11 @@
 \usepackage{csquotes}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,noabbrev]{cleveref}
-\usepackage[backend=biber,style=authoryear,maxcitenames=2]{biblatex}
+\usepackage[backend=bibtex,style=authoryear,maxcitenames=2]{biblatex}
 \addbibresource{bibliography/references.bib}
+
+\setlength{\emergencystretch}{2em}
+\graphicspath{{media/}}
 
 \newcommand{\Rstar}{R^{\star}}
 \newcommand{\bits}{\mathrm{bits}}

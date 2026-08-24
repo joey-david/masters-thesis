@@ -1,25 +1,93 @@
-\section{Toward Information-Theoretic Limits of Reasoning Fine-Tuning}
+\section{Toward information-theoretic limits of reasoning fine-tuning}
 \label{sec:unification}
 
 \subsection{Common quantities}
-\TODO{Define a compact common language for dataset information $I(D)$, serialized update rate $R(A)$, behavioral information written $W(A;D)$, minimum useful update rate $\Rstar(\tau)$, and utility-relative reasoning description length $C_U(T)$. Avoid claiming inequalities more strongly than the experiments support.}
 
-\figplaceholder{Unified information-flow diagram: training data information $\rightarrow$ parameter update $\rightarrow$ latent reasoning trajectory $\rightarrow$ behavior.}
+Let $I(D)$ denote a stated measure of information in a training set, such as a known source entropy or a conditional code length. Let $R(A)$ be the exact serialized rate of an update, and let
+\begin{equation}
+ W(A;D)=L_0(D)-L_A(D)
+\end{equation}
+be the held-out prediction bits saved by that update. $\Rstar(\tau)$ is the smallest update rate that retains fraction $\tau$ of the raw update's gain. These are measured at training time.
 
-\subsection{What the two research lines jointly suggest}
-\TODO{Synthesis, not forced equivalence: both projects distinguish nominal representation size from task-relevant information and show that preserving a norm/geometry is not equivalent to preserving behavior. Identify where the analogy is empirical versus conjectural.}
+At inference time, let a trace $T$ be compressed to $Z$ and let $U$ name the future use: answer recovery, symbolic update, correctness prediction, geometric reconstruction, or causal continuation. A utility-relative description length is
+\begin{equation}
+ C_U(T;\tau)=\min_{q,f}|q(T)| \quad \text{such that}\quad
+ U(f(q(T)))\geq \tau U(T),
+\end{equation}
+where the decoder and evaluation contract must be stated. This is a research definition, not a quantity fully estimated by the present token-boundary study.
 
-\subsection{Conjectures and falsification criteria}
-\TODO{State 2--4 precise, falsifiable conjectures rather than broad future-work prose. Candidate: dataset information predicts minimum behavioral update rate under compute-matched adaptation; preserving task behavior does not necessarily preserve reasoning-state organization; useful trajectory compression is utility-dependent.}
+The notation states a limited analogy. $R(A)$ is measured in the present experiments, whereas $C_U$ names a family of future measurements. $W(A;D)$ measures prediction change under a parameter update; $U$ may measure causal continuation under a state code. Both have a rate--utility form. The bits and coding theorems need not be the same in the two settings.
 
-\subsection{Experiment 1: data information versus adaptation rate}
-\TODO{Connect directly to the ongoing fineQComp campaign and specify the result slot.}
+\begin{figure}[t]
+\centering\small
+\fbox{\parbox[c][1.5cm][c]{.16\linewidth}{\centering Dataset\\$I(D)$}}
+$\xrightarrow{\text{training}}$
+\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering Serialized update\\$R(A)$}}
+$\xrightarrow{\text{base model}}$
+\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering Reasoning trace\\$T$}}
+$\xrightarrow{\text{utility }U}$
+\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering State or partition\\$C_U(T)$}}
+\caption[Unified training-time and inference-time information channels.]{The unified research program. Solid boxes name measured or measurable objects; the arrows are separate channels with separate side information. The report establishes properties within the update and state channels, not a conserved information quantity across the full chain.}
+\label{fig:unified-flow}
+\end{figure}
 
-\subsection{Experiment 2: adapter rate versus reasoning geometry}
-\TODO{Proposed experiment: compress one reasoning fine-tune across a rate ladder and measure task accuracy, operation decodability, trajectory geometry, and objective-relative thought-unit rankings. Compare the rate needed to preserve behavior with the rate needed to preserve internal structure.}
+\subsection{What the results jointly show}
 
-\subsection{Experiment 3: utility-relative trajectory rate--distortion}
-\TODO{Proposed experiment: optimize trajectory compression separately for answer preservation, symbolic updates, correctness prediction, and causal equivalence. Test whether rate--distortion frontiers differ across utilities.}
+Container size does not determine useful information in either line of work. Rank and bit width do not fix the smallest useful adapter file. Vector width and token count do not fix a sufficient reasoning state. Representation error also differs from behavioral error: lower adapter RMSE can give worse task retention, similar initial state mutual information can give different closed-loop regret, and a code that represents every state can still fail when its names drift under self-use. The two-model adapter panel adds the receiver to this account: the same five corpora have different rate orderings under different frozen base models. A new screen identifies the spectral volume of dataset-requested corrections as the strongest current predictor. The rate is thus tied to learned data through the receiver and named utility, rather than to source size alone.
+
+The analogy stops at this level. The fine-tuning study compresses a learned parameter update under a shared frozen model. The reasoning studies compare token partitions, exact controller memories, or deliberately trained state codes. No experiment yet identifies one conserved number that flows from dataset entropy, through adapter bits, into a reasoning-state rate.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{p{.22\linewidth}p{.32\linewidth}p{.32\linewidth}}
+\toprule
+Question & Update evidence & Reasoning-state evidence \\
+\midrule
+Is nominal size enough? & Rank and bit width fail to determine exact useful file rate. & Token count and code alphabet size fail to determine useful state. \\
+Does geometric error order behavior? & Lower RMSE can retain much less prediction gain. & Equal initial MI can produce very different closed-loop regret. \\
+Is more capacity sufficient? & Rank-64 needs roughly three times the file of rank-16. & A five-bit path-aliased code is worse than a matched canonical code. \\
+What preserves behavior? & Decoder-visible rate under a named behavioral target. & Sufficient state, shared naming, and self-conditioned closure under a named utility. \\
+\bottomrule
+\end{tabular}
+\caption{Common lessons and their distinct empirical support. The table states parallels, not equivalences.}
+\label{tab:common-lessons}
+\end{table}
+
+We noticed the connection late in the internship, after the adapter RMSE failure and the native-state routing failure. In each case, an internal fidelity measure looked better than the downstream behavior. The exact controller supplied the same contrast without neural estimation error. That recurrence justified a common vocabulary. The negative known-information result rejects source entropy, not all model-relative information. The correction-gradient screen gives a concrete candidate, while its discovery-set status keeps the claim short of a law.
+
+\subsection{Falsifiable conjectures}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Receiver-conditioned adaptation-rate conjecture.} At fixed adapter layout, optimizer exposure, support coverage, and absolute behavioral target, content diversity changes $\Rstar$ in a way that depends on the frozen base model and task structure. It fails if paired diversity effects disappear after support and gain are matched, or if one task-independent scalar predicts the thresholds across models.
+    \item \textbf{Structure-before-behavior threshold.} Along an exact adapter codec ladder, task accuracy, operation decodability, trajectory geometry, and objective-specific boundaries cross their retention thresholds at different rates. It fails if their bootstrapped threshold intervals coincide across models and tasks.
+    \item \textbf{Utility-relative trajectory rate.} The rate ordering of trace compressors changes between answer, symbolic-state, correctness, and causal-continuation utilities. It fails if one compressor dominates all utilities at matched rate on held-out tasks.
+    \item \textbf{Closure reliability law.} Long-horizon state accuracy is predicted by measured self-conditioned transition errors and their semantic confusion matrix, rather than by gold-input one-step accuracy. It fails if error propagation consistently deviates from this model after conditioning on active transition depth.
+\end{enumerate}
+
+Each conjecture names the measurement that could reject it. Earlier stages had begun with appealing explanations: compressible data should need fewer adapter bits, visible latent peaks should define thought units, and enough code symbols should yield a usable state. Those explanations became testable only after we paired them with a null arm, an exact ceiling, or a held-out transfer test.
+
+\subsection{Experiment 1: diversity without support or gain confounds}
+
+The next fine-tuning comparison must separate content diversity from support coverage. Every arm should cover the same held-out groups and output form, while the number of distinct training rules or contexts changes at fixed rows, updates, and samples seen. The current XBRL panel cannot do this because company count changes which companies appear during training. A second lever should match the raw adapter's absolute held-out gain across model--task pairs, rather than comparing the same corpus when one base model has much less to learn. Each arm needs its own baseline on the same scored tokens and a dense ladder that brackets both relative and absolute gain targets.
+
+The completed transform grid already separates output surprise from source content and rejects output change as the sole predictor. The SQL/XBRL panel then shows that a fixed-row diversity intervention can succeed on one task and fail on another. A support-matched, gain-matched design would test whether this split reflects reusable content structure or merely which held-out groups the adapter saw during training.
+
+\subsection{Experiment 2: adapter rate versus reasoning structure}
+
+Train one reasoning adapter and compress that fixed checkpoint across an exact rate ladder. At every decoded point, measure answer accuracy, held-out NLL, semantic-operation probe AUC, latent path statistics, and the objective-by-segmenter matrix. Estimate separate $\Rstar$ values for each measure. This directly tests whether a compressed update can preserve outputs while changing internal organization, or preserve easy probe structure after behavior fails. A fixed checkpoint prevents training variance from being mistaken for structural distortion.
+
+This experiment tests the two empirical lines together. It does not assume that they already share one rate. If internal metrics fail at a higher rate than task accuracy, the adapter contains structure that the output does not need. If task behavior fails first, the chosen internal measures are too weak to certify the computation. Coincident thresholds would establish a relation only for the tested models and tasks.
+
+\subsection{Experiment 3: utility-relative state rate}
+
+Apply one family of trace compressors to the same held-out traces: token deletion, learned boundary selection, finite opaque codes, and explicit symbolic summaries. Evaluate each under answer recovery, symbolic-update recovery, correctness, geometric error, donor interchange, and recursive continuation. The output is a set of rate--utility frontiers rather than one averaged score. Exact finite tasks can validate ceilings and closure before natural reasoning tasks test whether those controls transfer.
+
+The objective-matrix result predicts rank reversals between these frontiers. The explicit-state result adds a stricter utility: a compact trace must support a new operation after the old history is removed. A compressor that preserves answer extraction but fails donor interchange would still be useful, but it would not count as a reusable causal state.
 
 \subsection{Limits of the present evidence}
-\TODO{Separate completed empirical findings from the research program proposed here. This section should make the unification credible by being explicit about what remains speculative.}
+
+The core fine-tuning protocol now covers two 7B base models and five corpora, but most mechanistic axes still use Mistral-7B and rank-16 LoRA. The known-information task is small and synthetic. The correction-gradient result selected one measure from ten on the same 22 distinct arms used to assess it; its adjusted shuffle test does not replace a prospective model--task replication. The fixed-row replication has only SQL and XBRL, and XBRL confounds content diversity with company support. Token-unit evidence uses two models but mostly arithmetic traces, and the judged semantic test has only 12 held-out traces. The exact decision study uses hand-designed finite environments and representations. The strongest state-interface result uses a 16-state Horn system with explicit code supervision and many model calls. It may reflect finite transition-table fitting. Prepared causal-reasoning and transfer suites are not evidence until saved evaluations exist. These limits leave the unification as a testable program rather than a theorem.
+
+A broad, rate-matched method that preserves every tested utility with one task-independent representation would reject the current account. Failure on larger tasks would not validate utility-relative state by itself because training or search could cause it. The next stage therefore needs exact small-task controls alongside natural-task stress tests.
+
+\FloatBarrier
