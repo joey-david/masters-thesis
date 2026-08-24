@@ -42,6 +42,7 @@ The natural-task campaign uses Mistral-7B on an NF4 backbone, rank-16 all-linear
 The protocol also defines a successful measurement. The raw adapter must clear an absolute learning gate, the codec ladder must cross the target, and the file must decode without access to the raw tensors. Only then is $\Rstar(.90)$ defined. In the first pass, every arm appeared to need 1.02 bits per value because the ladder stopped too early. These rules identify that outcome as censored rather than as a flat scientific result.
 
 \subsection{Adaptive allocation: a negative result}
+\label{subsec:adaptive-allocation}
 
 The adaptive codec allowed each row to be dropped or encoded at 1, 2, 3, 4, or 8 bits. A Lagrangian allocator minimized reconstruction error plus a code-length penalty. The hypothesis was that spending bits on rows with the best error reduction would dominate uniform coding at a matched file rate.
 
@@ -115,6 +116,7 @@ The corrected code orders the 4, 64, 128, 256, and 512-bit conditions and lies w
 We built this experiment so that the proposed information measure could be checked against a known answer. The code passed that check, so a broken entropy proxy cannot explain the null $\Rstar$ relation by itself. The adapter can exploit structure shared across mappings. The bits sampled to create a dataset and the bits needed to implement a rule that fits it are different quantities.
 
 \subsection{Searching for model-relative dataset information}
+\label{subsec:model-relative-information}
 
 The first math panel suggested that the size of the learned change might set the budget: across 48 rank-16 runs, held-out bits saved explained $56\%$ of the variation in $\Rstar$. That fit covered only 0.16 bits saved per token. The completed response-transform grid breaks it. Five deterministic rewrites of the same answers nearly double the learned change, from 0.555 bits per token for plain narrow responses to 1.062 for symbolic responses, while $\Rstar$ moves from 0.684 to 0.763. Across all ten transform arms, the slope is 0.12 with $R^2=0.37$, against 1.90 in the original math fit. A 16-fold optimizer-budget sweep on identical content also moves prediction gain by only 0.04 bits per token while $\Rstar$ falls. The amount learned does not set the rate.
 

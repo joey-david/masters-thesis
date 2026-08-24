@@ -45,6 +45,7 @@ The first five hypotheses searched for a native solution object: a compact updat
 We initially treated the five hypotheses as routes to the same object. They were testing different properties: alignment to text, localization in geometry, causal portability, semantic identity, and predictive value. Averaging their disagreement would have hidden that distinction. We designed the token-lattice experiment to hold the candidate boundaries and budget fixed while changing only the objective.
 
 \subsection{No universal partition of the token lattice}
+\label{subsec:objective-relative-partition}
 
 Every generated-token transition was eligible as a boundary. Each trace received the same boundary budget: its number of verified symbolic updates, capped at 64, with a primary minimum separation of four tokens and sensitivity checks at one and eight. Utilities were normalized so random selection has expectation zero and the target oracle has score one.
 
@@ -100,6 +101,7 @@ A 12-bit explicit field state removes 79.3\% of no-memory regret, compared with 
 We introduced the exact study to separate representation failure from model and decoder error. The environment, posterior, planner, and rollout are all exact. The comparison isolates the missing property: a representation must summarize the current history and its update rule must retain the needed information as new observations arrive.
 
 \subsection{Native language-model state and explicit handoff}
+\label{subsec:native-state-handoff}
 
 On balanced three-bit addition programs, frozen Qwen2.5-32B reads a supplied state and applies a local update perfectly. At horizon two it synthesizes the history endpoint with 76.98\% accuracy but composes that endpoint with a final pointer table at only 13.44\%, near eight-state chance. Removing the history and passing the model's predicted state to a second call raises accuracy to 76.98\%; a gold handoff and stepwise decimal execution reach 100\%. State information exists, but the one-pass prompt does not route it into the final operation.
 
@@ -124,6 +126,7 @@ Hidden probes also retain path detail, and the tested late-layer state subspace 
 The factorization result changed the next experiment. We had searched for a hidden location to patch, but the model could perform each local operation without routing the endpoint through the final lookup. We stopped searching for an assumed native interface and supplied one explicitly, then tested what properties it needed.
 
 \subsection{Rate, shared meaning, and closure}
+\label{subsec:state-closure}
 
 Qwen2.5-7B LoRA adapters were trained to emit one opaque state token. For an eight-state addition task, code alphabets of size 4, 8, and 16 give declared rates of 2, 3, and 4 bits. Producer, consumer, and test contexts are disjoint. The two-bit code has perfect quotient closure and exactly 50\% answer accuracy, its information ceiling. The canonical three-bit code scores 74.27\% at horizon two and 42.19\% at horizon sixteen. A redundant four-bit code scores 97.71\% and 59.48\%. Context-bound dictionaries remain near chance, so surface capacity without shared meaning is not enough.
 
