@@ -5,19 +5,19 @@
 
 \subsubsection{Low-dimensional adaptation}
 
-Parameter-efficient fine-tuning shares a frozen model and changes a small learned object. Intrinsic-dimension results show that successful language-model adaptation can lie in a much smaller subspace than the full parameter space \parencite{aghajanyan2021intrinsic}. LoRA gives that constraint a practical form by learning a low-rank update to selected weight matrices \parencite{hu2022lora}. AdaLoRA then allocates rank by an importance score rather than fixing the same rank throughout the model \parencite{zhang2023adalora}. Work on LoRA factor asymmetry further shows that the input and output factors can contribute unequally despite having the same rank and similar storage cost \parencite{zhu2024asymmetry}.
+Intrinsic-dimension results show that successful language-model adaptation can lie in a much smaller subspace than the full parameter space \parencite{aghajanyan2021intrinsic}. The original LoRA method leverages that constraint, by learning a low-rank update to selected weight matrices \parencite{hu2022lora}. On top of LoRA, AdaLoRA allocates rank by an importance score rather than fixing the same rank throughout the model \parencite{zhang2023adalora}. Work on LoRA factor asymmetry further shows that the input and output factors can contribute unequally despite having the same rank and similar storage cost \parencite{zhu2024asymmetry}.
 
-This line studies where adaptation capacity should sit and how optimization should use it. Rank, however, is not a communication rate. Two rank-$r$ adapters can require different code lengths once precision, scales, sparsity, selectors, and metadata enter the message. The asymmetry result also warns that a codec based only on tensor size or reconstruction error can spend bits on the wrong part of the update.
+Since we study adaptation capacity, and rank is often used as an analogy for the expressivity of the transformation of a matrix, it could seem natural to use it as an alternative for information. Rank, however, is not a communication rate. Two rank-$r$ adapters can require different code lengths once precision, scales, sparsity, selectors, and metadata come into play. The aforementionned asymmetry result also warns that a codec based only on tensor size (or reconstruction error) can "spend" bits on the wrong part of the update.
 
 \subsubsection{Quantization and quantization-aware adaptation}
 
 Whole-model quantization provides several ways to allocate error. GPTQ uses approximate second-order information during sequential weight quantization \parencite{frantar2023gptq}. ZeroQuant uses hardware-aware groups and layer-wise distillation \parencite{yao2022zeroquant}; SmoothQuant moves activation difficulty into weights before applying integer quantization \parencite{xiao2023smoothquant}; and AWQ preserves channels selected from activation statistics \parencite{lin2024awq}. These methods show that equal nominal width does not imply equal functional cost across weights or layers.
 
-Quantized fine-tuning changes a related but distinct object. QLoRA trains higher-precision adapters over a four-bit frozen backbone \parencite{dettmers2023qlora}. LoftQ chooses an initialization that reduces joint quantization and low-rank approximation error \parencite{li2024loftq}, while QA-LoRA aligns quantization groups with the adapter so that the learned change can merge into a low-bit model \parencite{xu2024qalora}. Their main targets are training memory, initialization error, or low-bit deployment. They do not directly measure the shortest complete file that reproduces the behavior of one fixed trained adapter.
+QLoRA trains higher-precision adapters over a four-bit frozen backbone \parencite{dettmers2023qlora}. LoftQ chooses an initialization that reduces joint quantization and low-rank approximation error \parencite{li2024loftq}, while QA-LoRA aligns quantization groups with the adapter so that the learned change can merge into a low-bit model \parencite{xu2024qalora}. Their main targets are training memory, initialization error, or low-bit deployment. They do not directly measure the shortest complete file that reproduces the behavior of one fixed trained adapter.
 
-\subsubsection{Description length, bounds, and the open measurement question}
+\subsubsection{Description length, bounds, and open measurement}
 
-Rate--distortion theory formalizes the least message rate compatible with a chosen distortion \parencite{berger1971rate,cover2006elements}. Minimum description length treats short joint descriptions as a model-selection principle \parencite{grunwald2019mdl}. Compression-based and PAC-Bayes work uses compressed networks or posteriors to derive generalization bounds \parencite{arora2018compression,zhou2019pacbayes,lotfi2022pacbayes}. Those theories motivate complete code accounting, but their aims differ from the empirical question here.
+Rate--distortion theory formalizes the least message rate compatible with a chosen distortion \parencite{berger1971rate,cover2006elements}. Minimum Description Length (MDL) treats short joint descriptions as a model-selection principle \parencite{grunwald2019mdl}. Compression-based and PAC-Bayes work uses compressed networks or posteriors to derive generalization bounds \parencite{arora2018compression,zhou2019pacbayes,lotfi2022pacbayes}. Those theories motivate complete code accounting, but their aims differ from the empirical question here.
 
 Two similar questions therefore imply different experiments. ``How many parameters can be trained?'' concerns capacity. ``How many bits must another machine receive to reproduce the learned behavior?'' concerns communication. Given a fixed backbone, adapter layout, trained checkpoint, and decoder, this chapter measures the shortest serialized adapter that retains a stated fraction of learned behavior. It counts decoder-visible metadata and tests the adapter only after decoding from disk. The resulting threshold is an empirical rate--distortion point, not a generalization bound.
 
@@ -50,7 +50,7 @@ The adaptive codec did not dominate uniform coding. Row dropping could remove a 
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/mdl_vs_uniform.png}
+\includegraphics[width=.98\linewidth]{fineqcomp/plots/mdl_vs_uniform.pdf}
 \caption[Adaptive MDL allocation and the RMSE counterexample.]{Adaptive MDL allocation against fixed-rate controls. Left: retained held-out prediction gain against exact decoded file rate. Right: retained gain against relative weight RMSE. In the annotated counterexample, similar or lower weight error corresponds to a large behavioral loss. Values come from the committed three-seed Mistral-7B MetaMathQA/GSM8K campaign.}
 \label{fig:mdl-negative}
 \end{figure}
@@ -82,7 +82,7 @@ The fit $\Rstar=-0.26+0.081\log_2 n_{\rm distinct}$ has $R^2=0.78$ over 15 seed-
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/rate_vs_retention.png}
+\includegraphics[width=.98\linewidth]{fineqcomp/plots/rate_vs_retention.pdf}
 \caption[Compute-matched distinct-row rate--retention curves.]{Compute-matched distinct-row experiment. The left panel shows the full rate--retention curves; the right panel shows the derived $\Rstar(.90)$ cells and the fit over 15 runs. The curves shift to the right as the data becomes less repetitive, while optimizer steps and samples seen remain fixed.}
 \label{fig:distinct-rate}
 \end{figure}
@@ -93,7 +93,7 @@ An eight-thousand-row follow-up separated content diversity from row count. With
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/content_and_rows.png}
+\includegraphics[width=.98\linewidth]{fineqcomp/plots/content_and_rows.pdf}
 \caption[Content diversity and distinct-row controls.]{Two related but distinct diversity controls. Left: content diversity changes behind a fixed eight-thousand-row corpus, with six seeds. Right: distinct row count changes while optimization exposure is fixed, with six seeds in the updated reduction. Both move the rate threshold, but neither alone identifies the causal information quantity.}
 \label{fig:content-rows}
 \end{figure}
@@ -108,7 +108,7 @@ The corrected code orders the 4, 64, 128, 256, and 512-bit conditions and lies w
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/known_information_validation.png}
+\includegraphics[width=.98\linewidth]{fineqcomp/plots/known_information_validation.pdf}
 \caption[Known source information versus adapter rate.]{Known-information control. The conditional code recovers the correct order of source information after the switch-code repair (left), but adapter $\Rstar(.90)$ does not follow the known bits (right). Error bars show the seed range. The two panels separate validation of the information measure from validation of the proposed rate law.}
 \label{fig:known-info}
 \end{figure}
@@ -143,7 +143,7 @@ The strongest counterexample comes from a task on which fine-tuning changes beha
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.88\linewidth]{fineqcomp/plots/pooled_bits_against_rate.png}
+\includegraphics[width=.88\linewidth]{fineqcomp/plots/pooled_bits_against_rate.pdf}
 \caption[Learned prediction gain does not set adapter rate.]{Held-out prediction gain against $\Rstar(.90)$ across earlier math arms, the two-model corpus panel, and the high-gain SQL and XBRL panel. XBRL on Mistral has both the largest gain and the smallest measured threshold. The pooled negative correlation rejects a monotone positive cost law but is not itself a causal relation.}
 \label{fig:pooled-gain-rate}
 \end{figure}
@@ -168,7 +168,7 @@ XBRL & Qwen2.5-7B & 10 $\rightarrow$ 30 & 0.397 $\rightarrow$ 0.469 & 3/3 \\
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{fineqcomp/plots/diversity_replication.png}
+\includegraphics[width=.98\linewidth]{fineqcomp/plots/diversity_replication.pdf}
 \caption[Content diversity moves adapter rate on XBRL but not reliably on SQL.]{Fixed-row diversity panel. Points show means and bars show one standard deviation over three seeds. XBRL repeats the positive direction on both base models; SQL does not resolve it.}
 \label{fig:diversity-replication}
 \end{figure}
@@ -215,12 +215,12 @@ Quadrupling rank from 16 to 64 raises whole-file $\Rstar$ by about threefold, fr
 \centering
 \begin{subfigure}[t]{.46\linewidth}
 \centering
-\includegraphics[width=\linewidth]{fineqcomp/plots/rank_scaling.png}
+\includegraphics[width=\linewidth]{fineqcomp/plots/rank_scaling.pdf}
 \caption{Whole-file threshold at ranks 16 and 64.}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{.52\linewidth}
 \centering
-\includegraphics[width=\linewidth]{fineqcomp/plots/where_the_bits_live.png}
+\includegraphics[width=\linewidth]{fineqcomp/plots/where_the_bits_live.pdf}
 \caption{Layer-band allocation and depth-wise effect.}
 \end{subfigure}
 \caption[Rank scaling and layer-band allocation controls.]{Container and location controls. Rank scaling is closer to proportional growth than to a fixed task message. At matched total rate, uniform precision beats starving any third of the network; late-layer starvation is most damaging even though update RMS is almost flat across bands.}

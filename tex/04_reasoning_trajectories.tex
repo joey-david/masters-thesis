@@ -29,7 +29,7 @@ Layer-14 suppression and symbolic-to-natural patching were directional on one cl
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{reasoning/plots/stage_markers.png}
+\includegraphics[width=.98\linewidth]{reasoning/plots/stage_markers.pdf}
 \caption[Task-conditioned stage-marker pilot.]{Task-conditioned stage-marker pilot on paired symbolic, natural, ornate, and padded-symbolic forms. Dashed lines show fitted boundaries. Several marker curves overlap, and the padded control shifts the inferred schedule, so the figure supports a form-sensitive observation but not a language-specific stage claim.}
 \label{fig:stage-markers}
 \end{figure}
@@ -53,18 +53,18 @@ The four objectives were: increase in alignment with a gold-solution state; comp
 
 The held-out evaluation covered 310,044 SmolLM3-3B tokens and 61,691 Qwen3-14B tokens. Oracle overlap within four tokens was low: F1 ranged from 0.098 to 0.210 for SmolLM and 0.130 to 0.294 for Qwen. The best worst-objective utility was only 0.020 and 0.080, and remained stable under the one/four/eight-token sensitivity sweep. Sentence boundaries scored near zero on answer and symbolic-object utility. Raw cosine peaks retained some answer utility, about 0.30 in both models, so the result is non-dominance rather than absence of shared signals.
 
-Supervised detectors recovered their own boundaries with held-out ROC--AUC 0.999/0.984/0.849/0.868 for SmolLM and 0.998/0.992/0.859/0.825 for Qwen across answer/object/correctness/compression. Strong diagonal decoding rules out the explanation that the trace contains no structure. Weak cross-objective utility shows that the learned structures differ.
+Supervised detectors recovered their own boundaries with held-out ROC--AUC scores of 0.999/0.984/0.849/0.868 for SmolLM and 0.998/0.992/0.859/0.825 for Qwen (answer, object, correctness, and compression, respectively). Strong diagonal decoding rules out the explanation that the trace contains no structure. Weak cross-objective utility shows that the learned structures differ.
 
 \begin{figure}[p]
 \centering
 \begin{subfigure}[t]{.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{reasoning/plots/objective_matrix.png}
+\includegraphics[width=\linewidth]{reasoning/plots/objective_matrix.pdf}
 \caption{Normalized utility; random is zero and the target oracle is one.}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{reasoning/plots/regret_matrix.png}
+\includegraphics[width=\linewidth]{reasoning/plots/regret_matrix.pdf}
 \caption{Normalized regret; the target oracle is zero.}
 \end{subfigure}
 \caption[Objective-relative partition utility and regret.]{Objective-relative partitions on the primary SmolLM corpus. Rows are segmentation rules and columns are utilities. The strong diagonal and poor off-diagonal values show rank reversals: a boundary rule that is optimal for one use can be actively poor for another. Qwen replication and minimum-gap checks show the same non-dominance pattern.}
@@ -93,7 +93,7 @@ A 12-bit explicit field state removes 79.3\% of no-memory regret, compared with 
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.84\linewidth]{reasoning/plots/closed_loop_regret.png}
+\includegraphics[width=.84\linewidth]{reasoning/plots/closed_loop_regret.pdf}
 \caption[Exact closed-loop regret over horizon.]{Exact closed-loop regret over continuation horizon. Full history and the 12-bit text suffix have identical initial support, state mutual information, and path leakage, yet the suffix forgets later observations and its regret grows rapidly. Values are exact means over the 90 task cells in the repaired Phase 0/1 study.}
 \label{fig:closed-loop-regret}
 \end{figure}
@@ -111,12 +111,12 @@ Hidden probes also retain path detail, and the tested late-layer state subspace 
 \centering
 \begin{subfigure}[t]{.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{reasoning/plots/native_factorization.png}
+\includegraphics[width=\linewidth]{reasoning/plots/01_native_factorization.pdf}
 \caption{Local competence with failed serial composition.}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{reasoning/plots/explicit_handoff.png}
+\includegraphics[width=\linewidth]{reasoning/plots/02_explicit_handoff.pdf}
 \caption{Deleting history after an explicit handoff.}
 \end{subfigure}
 \caption[Native state factorization and explicit handoff.]{Frozen Qwen2.5-32B state-factorization assay. Read and Update are perfect, and Synthesize is often correct, yet one-pass Compose stays near chance. Passing the predicted state to a fresh call restores the synthesis rate at horizon two; gold and stepwise controls are perfect.}
@@ -134,7 +134,7 @@ Matched closure training supervises code-plus-one-rule to next-code; endpoint tr
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.74\linewidth]{reasoning/plots/rate_sufficiency.png}
+\includegraphics[width=.74\linewidth]{reasoning/plots/rate_sufficiency.pdf}
 \caption[Full-support proof-state rate control.]{Full-support rate and code control in the later proof-state suite. A three-bit code cannot recover any singleton four-bit ledger. Canonical and padded codes recover all states; the aliased code has enough surface symbols but poorer downstream behavior. Bars aggregate the committed evaluation summaries.}
 \label{fig:rate-sufficiency}
 \end{figure}
@@ -151,14 +151,14 @@ Two preset checks fail. The easy full-support bank shows no padded--aliased gap,
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.78\linewidth]{reasoning/plots/gauge_closure.png}
+\includegraphics[width=.78\linewidth]{reasoning/plots/gauge_closure.pdf}
 \caption[Matched-rate path-alias control.]{Matched-rate alias control. All code families cover the full state set, but adding one bit of path-dependent naming leaves one bit of conditional alias entropy and reduces exact state to 30--40\% after three active deductions. The dashed canonical reference remains exact.}
 \label{fig:gauge-closure}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=.98\linewidth]{reasoning/plots/depth_length.png}
+\includegraphics[width=.98\linewidth]{reasoning/plots/depth_length.pdf}
 \caption[Surface length, active depth, and behavior.]{Length, active depth, and behavior in the canonical causal-state suite. Padding the rule stream at fixed active depth leaves exact state unchanged, whereas increasing state-changing deductions damages the aliased code. Canonical final behavior remains high through the padded horizons.}
 \label{fig:depth-length}
 \end{figure}
@@ -169,7 +169,7 @@ Mixed register programs show the other limit. Three Qwen seeds apply add, XOR, s
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=.76\linewidth]{reasoning/plots/local_global_reliability.png}
+\includegraphics[width=.76\linewidth]{reasoning/plots/06_local_global_reliability.pdf}
 \caption[Local versus global register reliability.]{Local versus global reliability on held-out mixed register programs. Conditional transition accuracy is computed from the state actually supplied at each recursive call, so earlier errors do not make a later correct local update appear wrong. Roughly 89\% local accuracy still yields 7.9\% complete horizon-32 accuracy.}
 \label{fig:local-global}
 \end{figure}

@@ -1,20 +1,18 @@
 \contentsline {figure}{\numberline {1}{\ignorespaces Research sequence, April--August 2026.}}{3}{figure.caption.3}%
-\contentsline {figure}{\numberline {2}{\ignorespaces LoRA as a communication problem.}}{6}{figure.caption.4}%
-\contentsline {figure}{\numberline {3}{\ignorespaces Fixed-checkpoint exact-rate measurement loop.}}{6}{figure.caption.5}%
-\contentsline {figure}{\numberline {4}{\ignorespaces Probe versus causal state handoff.}}{7}{figure.caption.6}%
-\contentsline {figure}{\numberline {5}{\ignorespaces Adaptive MDL allocation and the RMSE counterexample.}}{11}{figure.caption.8}%
-\contentsline {figure}{\numberline {6}{\ignorespaces Compute-matched distinct-row rate--retention curves.}}{11}{figure.caption.10}%
-\contentsline {figure}{\numberline {7}{\ignorespaces Content diversity and distinct-row controls.}}{13}{figure.caption.11}%
-\contentsline {figure}{\numberline {8}{\ignorespaces Known source information versus adapter rate.}}{13}{figure.caption.12}%
-\contentsline {figure}{\numberline {9}{\ignorespaces Learned prediction gain does not set adapter rate.}}{15}{figure.caption.14}%
-\contentsline {figure}{\numberline {10}{\ignorespaces Content diversity moves adapter rate on XBRL but not reliably on SQL.}}{15}{figure.caption.16}%
-\contentsline {figure}{\numberline {11}{\ignorespaces Rank scaling and layer-band allocation controls.}}{16}{figure.caption.18}%
-\contentsline {figure}{\numberline {12}{\ignorespaces Task-conditioned stage-marker pilot.}}{20}{figure.caption.19}%
-\contentsline {figure}{\numberline {13}{\ignorespaces Objective-relative partition utility and regret.}}{20}{figure.caption.20}%
-\contentsline {figure}{\numberline {14}{\ignorespaces Exact closed-loop regret over horizon.}}{22}{figure.caption.21}%
-\contentsline {figure}{\numberline {15}{\ignorespaces Native state factorization and explicit handoff.}}{22}{figure.caption.22}%
-\contentsline {figure}{\numberline {16}{\ignorespaces Full-support proof-state rate control.}}{24}{figure.caption.23}%
-\contentsline {figure}{\numberline {17}{\ignorespaces Matched-rate path-alias control.}}{24}{figure.caption.24}%
-\contentsline {figure}{\numberline {18}{\ignorespaces Surface length, active depth, and behavior.}}{24}{figure.caption.25}%
-\contentsline {figure}{\numberline {19}{\ignorespaces Local versus global register reliability.}}{25}{figure.caption.26}%
-\contentsline {figure}{\numberline {20}{\ignorespaces Unified training-time and inference-time information channels.}}{26}{figure.caption.27}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Low-rank adaptation of a frozen weight matrix.}}{6}{figure.caption.4}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Adaptive MDL allocation and the RMSE counterexample.}}{11}{figure.caption.5}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Compute-matched distinct-row rate--retention curves.}}{11}{figure.caption.7}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Content diversity and distinct-row controls.}}{13}{figure.caption.8}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Known source information versus adapter rate.}}{13}{figure.caption.9}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Learned prediction gain does not set adapter rate.}}{15}{figure.caption.11}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Content diversity moves adapter rate on XBRL but not reliably on SQL.}}{15}{figure.caption.13}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Rank scaling and layer-band allocation controls.}}{16}{figure.caption.15}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Task-conditioned stage-marker pilot.}}{20}{figure.caption.16}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Objective-relative partition utility and regret.}}{20}{figure.caption.17}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Exact closed-loop regret over horizon.}}{22}{figure.caption.18}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Native state factorization and explicit handoff.}}{22}{figure.caption.19}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Full-support proof-state rate control.}}{24}{figure.caption.20}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Matched-rate path-alias control.}}{24}{figure.caption.21}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Surface length, active depth, and behavior.}}{24}{figure.caption.22}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Local versus global register reliability.}}{25}{figure.caption.23}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Unified training-time and inference-time information channels.}}{26}{figure.caption.24}%

@@ -1,11 +1,11 @@
 \section{Technical background}
 \label{sec:background}
 
-This section introduces the general concepts and notation needed for the rest of the report. It is intended for a machine-learning reader familiar with neural networks and optimization, but not necessarily with the conventions of modern large language models, parameter-efficient fine-tuning, or representation analysis. The more specialized recent literature that directly motivates our experiments is deferred to the literature reviews in \Cref{sec:fineqcomp,sec:reasoning}.
+This section introduces the general concepts and notation needed for the rest of the report, and can be skipped by readers already familiar with the state of the art of reasoning language models, parameter-efficient fine-tuning, and representation analysis. The more specialized recent literature that directly motivates our experiments is deferred to the literature reviews in \Cref{sec:fineqcomp,sec:reasoning}.
 
 \subsection{Transformers and autoregressive language models}
 
-A language model assigns probabilities to sequences of discrete tokens. Modern large language models (LLMs) typically tokenize text into subword units, map each token to a vector representation, and process the resulting sequence through many transformer blocks. Each block combines self-attention, which lets a position aggregate information from earlier positions, with feed-forward transformations. Residual connections carry a vector-valued representation through the successive layers of the network.
+A language model assigns probabilities to sequences of discrete tokens. Modern large language models (LLMs) typically tokenize text into subword units, map each token to a vector representation, and process the resulting sequence through many transformer blocks \parencite{vaswani2017attention}. Each block combines self-attention, which lets a position aggregate information from earlier positions, with feed-forward transformations. Residual connections carry a vector-valued representation through the successive layers of the network.
 
 For a prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model factorizes the probability of the continuation as
 \begin{equation}
@@ -18,15 +18,14 @@ We write $h_t^{(\ell)}\in\mathbb{R}^d$ for the hidden representation at token po
 
 \subsection{Chain-of-thought and reasoning traces}
 
-Chain-of-thought (CoT) prompting asks a language model to produce intermediate reasoning steps before its final answer. This simple change can substantially improve performance on multi-step reasoning tasks \parencite{wei2022chain}. Models trained or prompted to produce such traces are often called reasoning language models (RLMs) in this report.
+
+Chain-of-thought (CoT) prompting asks a language model to produce intermediate reasoning steps before its final answer. This simple change can substantially improve performance on multi-step reasoning tasks \parencite{wei2022chain} and problem-solving more broadly. Models trained or prompted to produce such traces are often called reasoning language models (RLMs) in this report. Since 2022, however, chain-of-thought has evolved from primarily a prompting technique into a behavior deliberately induced during training. Methods such as reinforcement learning from verifiable rewards (RLVR) and optimization algorithms such as Group Relative Policy Optimization (GRPO) train models directly against the correctness of their final answers and can induce increasingly long, self-correcting reasoning traces without requiring explicit step-by-step demonstrations at inference time \parencite{deepseekai2025r1,shao2024deepseekmath}. Modern reasoning models therefore commonly generate extended chains of thought by default, with the amount and structure of intermediate computation becoming part of the learned policy rather than merely a consequence of prompt engineering. Post-training can also give CoT a distributional form quite unlike ordinary language generation: the trace is optimized primarily as an internal computational workspace rather than as communicative prose, which can make stylistic or formatting interventions brittle. Although it is produced by the same autoregressive mechanism, this different functional role gives reason to expect correspondingly different latent dynamics.
 
 A CoT trace gives two related objects to study. The first is the written trajectory: the sequence of generated tokens, sentences, equations, or explicit intermediate claims. The second is the latent trajectory formed by the model's hidden representations while generating those tokens. The written trace is directly observable, while the latent trajectory requires access to model activations. Nothing in the autoregressive architecture requires meaningful computational steps to coincide with sentences, punctuation, or any other fixed textual unit.
 
-This distinction is important throughout the reasoning part of the report. A property may be visible in the text, decodable from a hidden state, or actually used by later computation; these are different claims and require different evidence.
-
 \subsection{Fine-tuning, parameter efficiency, and LoRA}
 
-Pretraining produces a general-purpose parameter vector $\theta_0$. Fine-tuning adapts that model to a new dataset or task by continuing optimization on a new objective. Full fine-tuning updates most or all model parameters. Parameter-efficient fine-tuning instead keeps most of the pretrained model fixed and learns a much smaller task-specific object.
+Pretraining produces a general-purpose parameter vector $\theta_0$. Fine-tuning adapts that model to a new dataset or task by continuing optimization on a new objective. Where full fine-tuning updates most or all model parameters, parameter-efficient fine-tuning instead keeps most of the pretrained model fixed and learns a much smaller task-specific object.
 
 Low-Rank Adaptation (LoRA) is a widely used example \parencite{hu2022lora}. For a pretrained weight matrix $W\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}$, LoRA freezes $W$ and learns a low-rank update
 \begin{equation}
@@ -38,17 +37,59 @@ where $A\in\mathbb{R}^{r\times d_{\mathrm{in}}}$, $B\in\mathbb{R}^{d_{\mathrm{ou
 
 This gives a useful separation between a \emph{base model}, which is shared, and a comparatively small learned \emph{adapter}. Rank controls the dimension of the update parameterization, but it should not be confused with a number of information bits: the learned matrix entries still need numerical values, and many different numerical representations are possible at the same rank.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
-\small
-\begin{tabular}{c@{\quad}c@{\quad}c}
-\fbox{\parbox[c][1.5cm][c]{.23\linewidth}{\centering Frozen pretrained\\weight $W$}} &
-$+$ &
-\fbox{\parbox[c][1.5cm][c]{.28\linewidth}{\centering Trainable low-rank\\update $BA$}} \\
-& $\Downarrow$ & \\
-\multicolumn{3}{c}{\fbox{\parbox[c][1.35cm][c]{.64\linewidth}{\centering Adapted weight $W'=W+(\alpha/r)BA$}}}
-\end{tabular}
-\caption[Low-rank adaptation of a frozen weight.]{LoRA keeps the pretrained matrix fixed and learns a low-rank update. The base model is shared across fine-tunes; only the adapter changes.}
+\vspace{20pt}
+\begin{center}
+\begin{tikzpicture}[
+  >={Latex[length=2mm]},
+  flow/.style={->, line width=.5pt},
+  lbl/.style={font=\scriptsize, text=black!60},
+  frozenfill/.style={draw=blue!50!black, fill=blue!7, line width=.5pt},
+  trainfill/.style={draw=orange!65!black, fill=orange!12, line width=.5pt}
+]
+
+% ---------- input ----------
+\node (x) at (0.1,0) {$x$};
+\coordinate (S) at (1.2,0);
+\draw[flow] (x) -- (S);
+\node[lbl, above] at (0.65,0.02) {$d$};
+\fill (S) circle (1.4pt);
+
+% ---------- frozen branch ----------
+\draw[frozenfill] (2.4,0.85) rectangle (6.2,2.35);
+\node at (4.3,1.80) {\large $W$};
+\node[lbl] at (4.3,1.25) {frozen \,\textbullet\, $d\times d$};
+\draw[flow] (S) |- (2.4,1.6);
+\draw[flow] (6.2,1.6) -| (8.0,0.45);
+
+% ---------- LoRA branch ----------
+\draw[trainfill] (2.4,-0.85) -- (2.4,-2.35) -- (3.6,-1.85) -- (3.6,-1.35) -- cycle;
+\node at (2.9,-1.6) {$A$};
+\draw[trainfill] (5.0,-1.35) -- (5.0,-1.85) -- (6.2,-2.35) -- (6.2,-0.85) -- cycle;
+\node at (5.7,-1.6) {$B$};
+\draw[flow] (S) |- (2.4,-1.6);
+\draw[flow] (3.6,-1.6) -- (5.0,-1.6);
+\node[lbl, above=1pt] at (4.3,-1.6) {$r \lll d$};
+\node[trainfill, circle, inner sep=1.2pt] (sc) at (7.1,-1.6) {$\alpha/r$};
+\draw[flow] (6.2,-1.6) -- (sc);
+\draw[flow] (sc) -| (8.0,-0.45);
+
+% ---------- sum ----------
+\node[draw, circle, inner sep=1.5pt, line width=.5pt] (sum) at (8.0,0) {$+$};
+\draw[flow] (sum) -- (9.1,0);
+\node at (9.35,0) {$h$};
+
+\end{tikzpicture}\par
+\vspace{4pt}
+{\scriptsize\color{black!60}
+ \tikz\draw[draw=blue!50!black, fill=blue!7, line width=.5pt] (0,0) rectangle (.28,.18);\;
+ shared, never updated \qquad
+ \tikz\draw[draw=orange!65!black, fill=orange!12, line width=.5pt] (0,0) rectangle (.28,.18);\;
+ trainable adapter \qquad
+ $|\theta_{\text{LoRA}}| = 2dr \ll d^2$\par}
+\end{center}
+\caption[Low-rank adaptation of a frozen weight matrix.]{LoRA freezes the pretrained weight matrix $W$ and learns the low-rank adapter update $\Delta W=(\alpha/r)BA$.}
 \label{fig:lora-channel}
 \end{figure}
 
@@ -56,9 +97,7 @@ $+$ &
 
 Neural-network parameters are usually stored as floating-point numbers. Quantization represents them with a smaller finite set of values. A simple quantizer stores, for example, an integer code for each weight together with one or more scale parameters that map the codes back to approximate real values. Fewer available levels reduce memory use but increase numerical distortion.
 
-Quantization can be applied to different objects for different reasons. A pretrained backbone may be quantized to reduce memory during inference or fine-tuning, while a separately learned adapter may remain in higher precision. QLoRA uses this distinction explicitly: it keeps a pretrained model in a four-bit quantized representation while training LoRA adapters through it \parencite{dettmers2023qlora}. Its NormalFloat-4 (NF4) representation is designed for weight distributions encountered in pretrained networks.
-
-The distinction matters later: saying that a model was trained with a four-bit backbone does not imply that its learned LoRA update is itself a four-bit object. Backbone quantization, adapter parameterization, and post-training compression are separate operations.
+Quantization can be applied to different objects for different reasons. A pretrained backbone may be quantized to reduce memory during inference or fine-tuning, while a separately learned adapter may remain in higher precision. Representative methods include GPTQ \parencite{frantar2023gptq}, ZeroQuant \parencite{yao2022zeroquant}, SmoothQuant \parencite{xiao2023smoothquant}, and AWQ \parencite{lin2024awq} for post-training or deployment quantization. QLoRA uses the same separation during adapter training: it keeps a pretrained model in a four-bit quantized representation while training LoRA adapters through it \parencite{dettmers2023qlora}. Its NormalFloat-4 (NF4) representation is designed for weight distributions encountered in pretrained networks.
 
 \subsection{Information, coding, and rate--distortion}
 
@@ -68,24 +107,22 @@ Information theory provides a language for relating probability, coding, and com
 \end{equation}
 The entropy of a random variable is the expected surprisal. In an ideal code, more probable events can be represented with shorter descriptions, so negative log-probability can also be interpreted as an idealized code length. For a language model, average negative log-likelihood therefore measures both predictive error and the number of bits per token that the model would need in an ideal probabilistic code.
 
-Conditional quantities express the value of information when some side information is already known. If both sender and receiver already possess a pretrained model, for example, the question is not how many bits are required to describe that model again, but how many additional bits are needed to specify whatever changes relative to it. Mutual information similarly measures how much knowing one random variable reduces uncertainty about another. These concepts are standard; later chapters define the particular operational quantities used in our experiments.
+Conditional quantities express the value of information when some side information is already known. If both sender and receiver already possess a pretrained model, for example, our interest would lie in the number of additional bits needed to specify whatever changes relative to it, rather than how many bits are required to describe that model again. \emph{Mutual information} similarly measures how much knowing one random variable reduces uncertainty about another. 
 
 Rate--distortion theory asks how small a representation can be while keeping some notion of error below an acceptable level \parencite{cover2006elements}. The key point is that a rate has meaning only together with a distortion measure. Two compressed objects with the same numerical reconstruction error can behave differently if errors occur in different functionally important directions. Conversely, a representation may differ substantially in Euclidean space while preserving the behavior that matters.
 
-Minimum Description Length (MDL) uses description length as a way of expressing regularity: a model or explanation is useful when it gives a short joint description of the model and the observations \parencite{grunwald2019mdl}. In this report, MDL and rate--distortion ideas provide conceptual motivation, while the exact rate and distortion used for the LoRA experiments are defined in \Cref{sec:fineqcomp}.
+Minimum Description Length (MDL) uses description length as a way of expressing regularity: a model or explanation is useful when it gives a short joint description of the model and the observations \parencite{grunwald2019mdl}. In this report, MDL and rate--distortion ideas provide conceptual motivation, while the exact rate and distortion that ended up being most widely used for the LoRA experiments are defined in \Cref{sec:fineqcomp}.
 
 \subsection{Internal representations, probes, and causal interventions}
 
-Hidden representations can contain information that is not explicit in the generated text. A common way to test this is a \emph{probe}: a simple supervised model, often linear, is trained to predict a property of interest from hidden activations. High held-out probe performance shows that the property is statistically accessible from the representation under the chosen decoder.
+As previously introduced, by "hidden representations", we describe the vectorial state of a transfomer pass after any one of its Attention+MLP layers. Hidden representations can contain information that is not explicit in the generated text. A common way to test this is a \emph{probe}: a simple supervised model, often linear, is trained to predict a property of interest from hidden activations. High held-out probe performance shows that the property is statistically accessible from the representation under the chosen decoder.
 
-Geometric analyses ask related but unsupervised questions. Principal component analysis can identify high-variance directions; cosine similarity measures changes in direction; distances or local statistics can reveal how a trajectory evolves through representation space. Such measurements describe organization in the representation but do not by themselves show that the model uses that organization causally.
+Geometric analyses ask related but unsupervised questions. Principal Component Analysis (PCA) can identify high-variance directions; cosine similarity measures changes in direction; distances or local statistics can reveal how a trajectory evolves through representation space. Such measurements describe organization in the representation but do not by themselves show that the model uses that organization causally.
 
-Causal interventions provide stronger evidence. In activation patching or interchange experiments, an internal activation from one computation is replaced by an activation from another and the downstream output is observed. If changing a representation changes later behavior in the way predicted by its proposed semantics, this supports a causal role. It is therefore useful to keep three claims separate throughout the report: a variable may be \emph{decodable}, may form a clear \emph{geometric structure}, and may be \emph{causally used}; none of these automatically implies the others.
+Where probes offer evidence for decodability, causal interventions provide stronger evidence. In activation patching or interchange experiments, an internal activation from one computation is replaced by an activation from another and the downstream output is observed. If changing a representation changes later behavior in the way predicted by its proposed semantics, this supports a causal role. It is therefore useful to keep three claims separate: a variable may be \emph{decodable}, may form a clear \emph{geometric structure}, and may be \emph{causally used}; importantly, none of these necessarily implies the others.
 
 \subsection{Experimental conventions}
 
-The experiments use a few standard conventions repeatedly. Training data determine the learned parameters; validation data may be used for model or checkpoint selection; held-out test data are reserved for estimating generalization. Independent random seeds give repeated training runs under the same nominal condition and expose optimization variance.
+For language modeling, we frequently report held-out negative log-likelihood (NLL), often converted to bits per token using base-two logarithms. This is a dense metric as every scored token contributes an observation. We also resort to exact or regex-based string matching for tasks with a small number of possible outputs, such as multiple-choice questions or arithmetic problems. In these cases, we report the fraction of correct answers.
 
-For language modeling, we frequently report held-out negative log-likelihood (NLL), often converted to bits per token using base-two logarithms. This is a dense metric because every scored token contributes an observation. Exact-match accuracy is much sparser but directly tests whether the final structured answer is correct. The two should not be treated as interchangeable.
-
-Controlled comparisons also require matching the resource that is meant to stay fixed. Depending on the experiment, this can mean the same number of optimizer updates, examples, tokens, parameters, or representational capacity. The relevant matching rule is stated with each experiment rather than assumed from a shared nominal setting.
+Controlled comparisons also require matching the resource that is meant to stay fixed. Depending on the experiment, this can mean the same number of optimizer updates, examples, tokens, parameters, or representational capacity. We openly state the matching rule with each experiment rather than assumed from a shared nominal setting.

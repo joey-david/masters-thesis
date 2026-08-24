@@ -91,6 +91,7 @@ The following entries passed the audit against the Zotero PDF and, where present
 
 | Key | Status | Source checked | Claim used |
 |---|---|---|---|
+| `vaswani2017attention` | VERIFIED, NeurIPS 2017 | arXiv:1706.03762 PDF | Introduces the Transformer architecture based on attention rather than recurrence or convolution. |
 | `aghajanyan2021intrinsic` | VERIFIED, ACL 2021 | DOI and PDF | Fine-tuning can succeed in a low-dimensional subspace. |
 | `zhu2024asymmetry` | PREPRINT | arXiv:2402.16842 PDF | LoRA factors can have unequal functional roles. |
 | `frantar2023gptq` | VERIFIED, ICLR 2023 | paper PDF | GPTQ uses approximate second-order information for sequential weight quantization. |
@@ -100,6 +101,8 @@ The following entries passed the audit against the Zotero PDF and, where present
 | `zhou2019pacbayes` | VERIFIED, ICLR 2019 | paper PDF | A compressed network can define a PAC-Bayes generalization bound. |
 | `lotfi2022pacbayes` | VERIFIED, NeurIPS 2022 | paper PDF | Learned compression can tighten PAC-Bayes bounds. |
 | `yao2023react` | VERIFIED, ICLR 2023 | arXiv:2210.03629 PDF | ReAct interleaves reasoning, actions, and observations. |
+| `shao2024deepseekmath` | PREPRINT | arXiv:2402.03300 | Introduces Group Relative Policy Optimization (GRPO), a PPO variant for mathematical reasoning. |
+| `deepseekai2025r1` | PREPRINT | arXiv:2501.12948 | Uses reinforcement learning with verifiable outcome rewards to induce reasoning behavior. |
 | `dutta2024step` | PREPRINT | arXiv:2402.18312 PDF | The tested ontology task shows earlier relation transfer and later answer-writing paths. |
 | `hao2025coconut` | VERIFIED, COLM 2025 | OpenReview proceedings PDF | Coconut feeds continuous hidden states back as later reasoning inputs. |
 | `fagnou2024chain` | VERIFIED, EMNLP 2024 | DOI and PDF | The paper proves a depth constraint for its entity-tracking setting and tests chain attention. |

@@ -127,7 +127,7 @@ Methodological corrections visible in commit history:
 - Fixed compute matching across dataset-information arms.
 - Fixed checkpoint-selection / validation-opportunity bias caused by different epoch structures.
 - Replaced row count alone with independently measured dataset-information proxies.
-- Added dense 1–2 bit interpolation because the behavioral threshold R* lies inside that range.
+- Added dense 1–2 bit interpolation because the behavioral threshold R\* lies inside that range.
 
 ### Current dataset-information campaign — August 2026
 
@@ -136,7 +136,7 @@ Design:
 - Hold optimizer updates and total samples seen fixed.
 - Vary distinct examples / epochs so unique training information changes substantially while optimization exposure is controlled.
 - Measure corpus compressibility with LZMA (plus controls) and behavioral information from held-out NLL.
-- Estimate the minimum serialized adapter rate R*(0.90) required to retain a target fraction of learned behavior.
+- Estimate the minimum serialized adapter rate R\*(0.90) required to retain a target fraction of learned behavior.
 
 Key intended test:
 
@@ -165,6 +165,6 @@ Safe synthesis:
 
 Do not yet claim:
 
-- a theorem connecting update-rate R* to reasoning-state rate;
+- a theorem connecting update-rate R\* to reasoning-state rate;
 - that native CoT has a universal minimum state description;
 - that the state-handoff synthetic results directly characterize frontier reasoning models on natural tasks.
