@@ -21,31 +21,69 @@ Continuous latent reasoning removes the requirement that every intermediate stat
 
 Prior work thus finds useful tokens, stages, circuits, and latent states, but each selects an often new notion of state through its task and measure. As we studied the implications of the information theoretic limits of finetuning on RLMs, we came across two clear questions : whether one token decomposition remains useful across several objectives, and whether a decoded or produced state remains sufficient after the source history is removed and the state is used again. We began with the simpler idea that a long verbal derivation might hide a short series of stable updates.
 
-\subsection{Layer schedules: a qualified pilot}
-
-We began with a simple version of the ``reasoning stages'' hypothesis: if a model performs a sequence of internal stages, do those stages appear at similar depths when the same problem is phrased differently? We expressed the same linear problem in four forms---symbolic, ordinary natural language, deliberately ornate language, and a length-padded symbolic version---and tracked where stage-related markers became strongest across the transformer layers.
-
-Only problems answered correctly in all four forms were compared. The inferred middle stage occupied fractions 0.593, 0.667, 0.667, and 0.704 of the model depth in the four conditions; natural language exceeded the symbolic condition by $0.074$ with paired 95\% interval $[0.037,0.111]$. The apparent schedule changes with phrasing, but it also changes when the symbolic prompt is merely padded. We therefore could not tell whether the effect reflected reasoning form, token position, or sequence length.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=.98\linewidth]{reasoning/plots/stage_markers.pdf}
-\caption[Task-conditioned stage-marker pilot.]{Task-conditioned stage-marker pilot on paired symbolic, natural, ornate, and padded-symbolic forms. Dashed lines show fitted boundaries. Several marker curves overlap, and the padded control shifts the inferred schedule, so the figure supports a form-sensitive observation but not a language-specific stage claim.}
-\label{fig:stage-markers}
-\end{figure}
-
-We also tried to make the result causal rather than relying only on layer curves. A targeted suppression at layer 14 and a symbolic-to-natural activation patch were directional on one clean pair but did not remain statistically stable. A separate synthetic depth-generalization pilot, ChaCAL, also looked promising at shallow depths but failed its own validity checks: held-out depths used unseen positions, some tasks admitted parallel shortcuts, and reinforcement learning omitted the hard cases. We therefore treat that pilot as a methodological failure rather than evidence for a depth law.
-
-The lesson was useful: a visually clean layer profile was not enough to support a mechanistic claim. The next experiments needed to control prompt length, choose interventions without looking at the test set, and test the downstream variable that the proposed internal state was supposed to affect.
-
 \FloatBarrier
 \subsection{Trajectory pipeline and first hypotheses}
 
-Because coarse layer schedules were too confounded, we moved to token-by-token reasoning traces. For each generated arithmetic solution we recorded the text, correctness, sentence boundaries, symbolic arithmetic updates extracted by a parser, and hidden states at each token and layer. All projections are fitted on training questions, and train/test splits are question-disjoint.
+Our initial hypothesis was that a long chain of thought might follow a \emph{solution object}, composed of compact internal updates corresponding to meaningful steps of the reasoning. If such objects existed naturally, several things should happen at roughly the same places in the trace. A meaningful text boundary should coincide with a localized latent change; equivalent computations should permit causal transfer; similar operations should have similar representations; and those units should help predict whether the solution is correct.
 
-Our initial hypothesis was that a long chain of thought might contain a smaller number of \emph{solution objects}: compact internal updates corresponding to meaningful steps of the reasoning. If such objects existed naturally, several things should happen at roughly the same places in the trace. A meaningful text boundary should coincide with a localized latent change; equivalent computations should permit causal transfer; similar operations should have similar representations; and those units should help predict whether the solution is correct.
+We began with trying to identify global, defensible, utilty-neutral partitions in CoTs, which would have allowed us to split CoT streams into chunks, which could then have been classified as different types of reasoning operations. Text boundaries did not define a stable latent partition. Symbolic updates were spread over windows rather than appearing as single sharp jumps. Prespecified patches between process-isomorphic traces did not reliably transfer the target behavior. Raw hidden-state geometry grouped operations poorly even though supervised projections could decode them. Finally, sentence-level summaries predicted correctness better than the proposed latent segments in the tested corpus.
 
-The five tests did not converge on one such object. Text boundaries did not define a stable latent partition. Symbolic updates were spread over windows rather than appearing as single sharp jumps. Prespecified patches between process-isomorphic traces did not reliably transfer the target behavior. Raw hidden-state geometry grouped operations poorly even though supervised projections could decode them. Finally, sentence-level summaries predicted correctness better than the proposed latent segments in the tested corpus.
+\begin{figure}[h]
+\centering
+\small
+\begin{tikzpicture}[
+  >={Latex[length=1.8mm]},
+  edge/.style={->, line width=.45pt, draw=black!55},
+  fact/.style={draw=black!45, fill=black!4, rounded corners=1.5pt,
+               align=center, text width=2.5cm, inner sep=4pt,
+               font=\scriptsize, minimum height=.95cm},
+  claim/.style={draw=teal!60!black, fill=teal!8, rounded corners=1.5pt,
+                align=center, text width=3.1cm, inner sep=4pt,
+                font=\scriptsize, minimum height=.95cm},
+  sol/.style={draw=teal!60!black, fill=teal!22, rounded corners=1.5pt,
+              line width=.7pt, align=center, text width=3.1cm, inner sep=4pt,
+              font=\scriptsize, minimum height=.95cm},
+  tier/.style={font=\scriptsize\itshape, text=black!45, anchor=east, align=right}
+]
+
+% ---------- tier 0: verified elements ----------
+\node[fact] (f1) at (0,0)   {April sales\\[1pt] $n_{\mathrm{Apr}} = 48$};
+\node[fact] (f2) at (3.1,0) {``half as many''\\[1pt] $n_{\mathrm{May}} = n_{\mathrm{Apr}}/2$};
+\node[fact] (f3) at (6.2,0) {``altogether''\\[1pt] $\Rightarrow$ sum, not diff.};
+
+% ---------- tier 1: intermediate claims ----------
+\node[claim] (c1) at (1.55,2.0) {$n_{\mathrm{May}} = 48/2 = 24$};
+\node[claim] (c2) at (5.2,2.0)  {total $= n_{\mathrm{Apr}} + n_{\mathrm{May}}$};
+
+% ---------- tier 2: solution ----------
+\node[sol] (s) at (3.35,4.0) {$48 + 24 = 72$ clips};
+
+% ---------- edges ----------
+\draw[edge] (f1) -- (c1);
+\draw[edge] (f2) -- (c1);
+\draw[edge] (f1) -- (c2);
+\draw[edge] (f3) -- (c2);
+\draw[edge] (c1) -- (s);
+\draw[edge] (c2) -- (s);
+
+% ---------- tier labels ----------
+\node[tier] at (-1.45,0)   {verified\\elements};
+\node[tier] at (-1.45,2.0) {intermediate\\claims};
+\node[tier, align=right] at (-1.45,4.0) {solution};
+
+
+\end{tikzpicture}
+\caption[Idealized solution object as a DAG.]{%
+\emph{Problem. Natalia sold clips to 48 of her friends in April, and
+  then she sold half as many clips in May. How many clips did Natalia sell
+altogether in April and May?}
+
+A hypothetical solution object viewed as a directed acyclic graph over claims.
+Leaves are directly verifiable readings of the problem statement;
+internal nodes are operations that consume earlier claims; the sink is the
+answer.}
+\label{fig:solution-object}
+\end{figure}
 
 This did not mean that the trajectories lacked structure. It meant that our five tests were asking for different kinds of structure---text alignment, geometric localization, causal portability, semantic identity, and predictive value---and there was no reason they had to select the same boundaries. We therefore stopped averaging them into one notion of ``thought unit'' and compared the objectives directly.
 
