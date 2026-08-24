@@ -1,13 +1,25 @@
 \section{Fine-tuning under an information budget}
 \label{sec:fineqcomp}
 
-\subsection{Related work and gap}
+\subsection{Literature review}
 
-Parameter-efficient fine-tuning changes a small set of parameters while sharing the base model \parencite{hu2022lora}. QLoRA extends this setting to a quantized frozen backbone \parencite{dettmers2023qlora}. AdaLoRA allocates rank by an importance score \parencite{zhang2023adalora}; LoftQ chooses an initialization that reduces the joint quantization and low-rank approximation error \parencite{li2024loftq}; QA-LoRA aligns quantization groups and adapter structure for later low-bit deployment \parencite{xu2024qalora}. These methods improve training or weight reconstruction, but their nominal bit widths do not answer how many decoder-visible bits preserve a fixed trained adapter's behavior.
+\subsubsection{Low-dimensional adaptation}
 
-Compression-based learning bounds and minimum-description-length work motivate short learned descriptions \parencite{arora2018compression,grunwald2019mdl}. Here that idea supplies a measurement rule, without turning the experiment into a generalization theorem. Given a fixed backbone, adapter layout, trained checkpoint, and decoder, the aim is to measure the shortest adapter file that retains a stated fraction of learned behavior and then ask what sets that threshold.
+Parameter-efficient fine-tuning shares a frozen model and changes a small learned object. Intrinsic-dimension results show that successful language-model adaptation can lie in a much smaller subspace than the full parameter space \parencite{aghajanyan2021intrinsic}. LoRA gives that constraint a practical form by learning a low-rank update to selected weight matrices \parencite{hu2022lora}. AdaLoRA then allocates rank by an importance score rather than fixing the same rank throughout the model \parencite{zhang2023adalora}. Work on LoRA factor asymmetry further shows that the input and output factors can contribute unequally despite having the same rank and similar storage cost \parencite{zhu2024asymmetry}.
 
-Two similar questions imply different experiments. ``How many parameters can we train?'' concerns capacity. ``How many bits must another machine receive to reproduce the learned behavior?'' concerns communication. We chose the communication question, which made serialization, decoder-visible metadata, and post-decode evaluation part of the measurement.
+This line studies where adaptation capacity should sit and how optimization should use it. Rank, however, is not a communication rate. Two rank-$r$ adapters can require different code lengths once precision, scales, sparsity, selectors, and metadata enter the message. The asymmetry result also warns that a codec based only on tensor size or reconstruction error can spend bits on the wrong part of the update.
+
+\subsubsection{Quantization and quantization-aware adaptation}
+
+Whole-model quantization provides several ways to allocate error. GPTQ uses approximate second-order information during sequential weight quantization \parencite{frantar2023gptq}. ZeroQuant uses hardware-aware groups and layer-wise distillation \parencite{yao2022zeroquant}; SmoothQuant moves activation difficulty into weights before applying integer quantization \parencite{xiao2023smoothquant}; and AWQ preserves channels selected from activation statistics \parencite{lin2024awq}. These methods show that equal nominal width does not imply equal functional cost across weights or layers.
+
+Quantized fine-tuning changes a related but distinct object. QLoRA trains higher-precision adapters over a four-bit frozen backbone \parencite{dettmers2023qlora}. LoftQ chooses an initialization that reduces joint quantization and low-rank approximation error \parencite{li2024loftq}, while QA-LoRA aligns quantization groups with the adapter so that the learned change can merge into a low-bit model \parencite{xu2024qalora}. Their main targets are training memory, initialization error, or low-bit deployment. They do not directly measure the shortest complete file that reproduces the behavior of one fixed trained adapter.
+
+\subsubsection{Description length, bounds, and the open measurement question}
+
+Rate--distortion theory formalizes the least message rate compatible with a chosen distortion \parencite{berger1971rate,cover2006elements}. Minimum description length treats short joint descriptions as a model-selection principle \parencite{grunwald2019mdl}. Compression-based and PAC-Bayes work uses compressed networks or posteriors to derive generalization bounds \parencite{arora2018compression,zhou2019pacbayes,lotfi2022pacbayes}. Those theories motivate complete code accounting, but their aims differ from the empirical question here.
+
+Two similar questions therefore imply different experiments. ``How many parameters can be trained?'' concerns capacity. ``How many bits must another machine receive to reproduce the learned behavior?'' concerns communication. Given a fixed backbone, adapter layout, trained checkpoint, and decoder, this chapter measures the shortest serialized adapter that retains a stated fraction of learned behavior. It counts decoder-visible metadata and tests the adapter only after decoding from disk. The resulting threshold is an empirical rate--distortion point, not a generalization bound.
 
 \subsection{May pilots: sharpening the variable}
 

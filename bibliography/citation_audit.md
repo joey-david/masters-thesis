@@ -84,3 +84,27 @@ For every candidate reference, record:
 4. If venue status differs across sources, report the most precise current status.
 5. If only a preprint exists, say so.
 6. Re-run the metadata check immediately before thesis submission for 2025–2026 papers whose status may have changed.
+
+## References used in the literature review
+
+The following entries passed the audit against the Zotero PDF and, where present, its DOI, proceedings record, OpenReview page, or arXiv identifier. Claims in the report stay at the level stated here.
+
+| Key | Status | Source checked | Claim used |
+|---|---|---|---|
+| `aghajanyan2021intrinsic` | VERIFIED, ACL 2021 | DOI and PDF | Fine-tuning can succeed in a low-dimensional subspace. |
+| `zhu2024asymmetry` | PREPRINT | arXiv:2402.16842 PDF | LoRA factors can have unequal functional roles. |
+| `frantar2023gptq` | VERIFIED, ICLR 2023 | paper PDF | GPTQ uses approximate second-order information for sequential weight quantization. |
+| `xiao2023smoothquant` | VERIFIED, ICML 2023 | paper PDF | SmoothQuant moves activation difficulty into weights before integer quantization. |
+| `yao2022zeroquant` | VERIFIED, NeurIPS 2022 | paper PDF | ZeroQuant combines group quantization and layer-wise distillation. |
+| `lin2024awq` | VERIFIED, MLSys 2024 | paper PDF | AWQ selects salient weight channels using activation statistics. |
+| `zhou2019pacbayes` | VERIFIED, ICLR 2019 | paper PDF | A compressed network can define a PAC-Bayes generalization bound. |
+| `lotfi2022pacbayes` | VERIFIED, NeurIPS 2022 | paper PDF | Learned compression can tighten PAC-Bayes bounds. |
+| `yao2023react` | VERIFIED, ICLR 2023 | arXiv:2210.03629 PDF | ReAct interleaves reasoning, actions, and observations. |
+| `dutta2024step` | PREPRINT | arXiv:2402.18312 PDF | The tested ontology task shows earlier relation transfer and later answer-writing paths. |
+| `hao2025coconut` | VERIFIED, COLM 2025 | OpenReview proceedings PDF | Coconut feeds continuous hidden states back as later reasoning inputs. |
+| `fagnou2024chain` | VERIFIED, EMNLP 2024 | DOI and PDF | The paper proves a depth constraint for its entity-tracking setting and tests chain attention. |
+| `yang2025symbolic` | VERIFIED, ICML 2025 | proceedings PDF | The tested abstract tasks show abstraction, induction, and retrieval components. |
+| `qian2025peaks` | VERIFIED, NeurIPS 2025 | NeurIPS proceedings and arXiv:2506.02867 PDF | The paper identifies tokens with high estimated mutual information under its measure. |
+| `yu2025stateaware` | VERIFIED, Findings of EMNLP 2025 | ACL Anthology and arXiv:2509.00190 PDF | Hidden-state changes are analyzed as task-specific reasoning stages. |
+| `sun2026trajectories` | VERIFIED, ACL 2026 long paper | ACL Anthology and arXiv:2604.05655 PDF | The paper reports step-specific geometry and correctness signals. |
+| `zhang2025latenttokens` | PREPRINT | arXiv:2512.21711 PDF | Causal and adversarial tests question the meaning of latent tokens in the tested setup. |

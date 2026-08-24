@@ -3,7 +3,9 @@
 
 \subsection{Text and latent trajectories}
 
-For prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model defines $p_\theta(y_{1:T}\mid x)=\prod_t p_\theta(y_t\mid x,y_{<t})$. A written chain of thought is the token sequence before the final answer. It differs from the latent path. Let $h_t^{(\ell)}\in\mathbb{R}^d$ be the residual-stream state at generated position $t$ and layer $\ell$. Text boundaries need not coincide with changes in $(h_1^{(\ell)},\ldots,h_T^{(\ell)})$, and a label decoded from this path need not control later computation.
+For prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model defines $p_\theta(y_{1:T}\mid x)=\prod_t p_\theta(y_t\mid x,y_{<t})$. Chain-of-thought prompting makes intermediate steps part of this token sequence and can improve arithmetic, symbolic, and commonsense reasoning \parencite{wei2022chain}. ReAct interleaves such reasoning with actions and observations, making the written trace part of a control loop rather than a free-standing explanation \parencite{yao2023react}. A written chain of thought still differs from the latent path. Let $h_t^{(\ell)}\in\mathbb{R}^d$ be the residual-stream state at generated position $t$ and layer $\ell$. Text boundaries need not coincide with changes in $(h_1^{(\ell)},\ldots,h_T^{(\ell)})$, and a label decoded from this path need not control later computation.
+
+This distinction motivates work at several scales. Mechanistic studies localize information transfer and answer-writing components across layers \parencite{dutta2024step}; trajectory studies measure step-specific geometry and correctness signals \parencite{sun2026trajectories}; and token-level work identifies positions with high estimated mutual information about the answer \parencite{qian2025peaks}. These results establish that reasoning traces contain useful structure. They do not establish that one layer, token boundary, or decoded variable is the state needed by every later use.
 
 \subsection{Low-rank and quantized adaptation}
 
@@ -14,6 +16,10 @@ LoRA keeps $W\in\mathbb{R}^{d_{\rm out}\times d_{\rm in}}$ fixed and learns
 where $A\in\mathbb{R}^{r\times d_{\rm in}}$ and $B\in\mathbb{R}^{d_{\rm out}\times r}$ \parencite{hu2022lora}. The receiver knows the frozen model and the placement of each pair, so only the learned factors and decoder metadata need transmission. The two factors have different roles: $A$ maps inputs into rank coordinates and $B$ maps them back. Equal size does not imply equal behavioral value.
 
 QLoRA stores the frozen backbone in a low-bit format while training higher-precision adapters \parencite{dettmers2023qlora}. NF4 code points suit an approximately normal weight distribution, and block scales recover local magnitude. This saves training memory. The four-bit backbone says nothing about the rate of the learned update, which must be coded after training.
+
+Low-dimensional adaptation has two distinct precedents. Intrinsic-dimension experiments show that language-model fine-tuning can succeed in a small learned subspace \parencite{aghajanyan2021intrinsic}, while adapter analysis finds that the two LoRA factors can play unequal roles \parencite{zhu2024asymmetry}. Neither result fixes a serialized bit rate: dimension limits the space in which an update varies, while a code also chooses precision, scales, indices, and headers.
+
+Post-training quantization supplies useful codec designs and controls. GPTQ uses approximate second-order information to quantize weights sequentially \parencite{frantar2023gptq}; SmoothQuant shifts activation outliers into weights before quantization \parencite{xiao2023smoothquant}; ZeroQuant combines hardware-aware group quantization with layer-wise knowledge distillation \parencite{yao2022zeroquant}; and AWQ protects weight channels selected through activation statistics \parencite{lin2024awq}. These methods target whole-model size, speed, or reconstruction. The adapter experiments below instead hold one trained update fixed and measure the smallest decoded file that preserves its behavior.
 
 \begin{figure}[t]
 \centering
@@ -45,6 +51,8 @@ Rate--distortion theory asks for the least rate that meets a distortion limit \p
 \end{equation}
 $\Rstar$ is undefined if the raw adapter fails an absolute learning gate and censored if the codec ladder does not bracket the crossing. Weight RMSE, held-out NLL, and exact task accuracy are distinct distortions.
 
+Minimum description length connects learning to the length of a model and data code \parencite{grunwald2019mdl}. Compression-based generalization work instead turns a short description or compressed posterior into a bound \parencite{arora2018compression,zhou2019pacbayes,lotfi2022pacbayes}. This report borrows the discipline of counting a complete message, not the conclusion of those bounds. Its rate is an observed artifact size and its distortion is held-out behavior; it does not claim that a short adapter alone proves generalization.
+
 \begin{figure}[t]
 \centering\small
 \fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Train once\\raw adapter}}
@@ -63,6 +71,8 @@ $\rightarrow$
 \subsection{Probes, state, and interventions}
 
 A probe fits a decoder on training traces and tests it on held-out questions. PCA, whitening, cosine changes, path length, and Gram statistics describe representation geometry. These measurements support different claims. Decodability shows accessible correlation. Raw geometry that beats its controls suggests an organization visible without labels. Causal use requires an intervention.
+
+Prior work illustrates the range of possible state claims. Entity-tracking analysis gives a depth lower bound for standard attention and proposes a chain-aware mechanism \parencite{fagnou2024chain}. Mechanistic work on abstract reasoning reports early abstraction, middle-layer symbolic induction, and late retrieval components \parencite{yang2025symbolic}. State-aware trajectory analysis, by contrast, treats changes in hidden representations as empirical reasoning stages \parencite{yu2025stateaware}. The objects differ: an architectural memory rule, a circuit component, and a decoded stage are not interchangeable forms of evidence.
 
 Interchange replaces a recipient activation or code with one from a donor, then tests whether the output changes as the donor semantics predict. Same-state, different-state, matched-position, random-subspace, and gold-state controls separate a state effect from scale or position. An explicit handoff removes the old history and requires a second call to act using only the supplied state and a new rule. For closure, a model-produced state must remain valid after another legal update.
 
@@ -84,6 +94,8 @@ In a partially observed control task, histories $H$ are equivalent only relative
  D(Z)=V^{\star}-V^{\pi_Z},
 \end{equation}
 where $\pi_Z$ plans through the real update rule of $Z$. This prevents an evaluator from granting a small-memory controller hidden access to the full history after the first action.
+
+Latent-reasoning methods make the update rule explicit by feeding hidden representations back as later inputs. Coconut replaces some written steps with continuous thoughts and trains the model to use those states recursively \parencite{hao2025coconut}. A later causal and adversarial study questions whether such latent tokens always carry the structured computation suggested by their outputs \parencite{zhang2025latenttokens}. Together, these works motivate separate tests for decodability, causal sufficiency, and stability under self-conditioned reuse.
 
 \subsection{Experimental conventions}
 

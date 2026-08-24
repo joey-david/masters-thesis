@@ -1,17 +1,22 @@
 \section{Introduction}
 \label{sec:introduction}
 
-\subsection{Internship context and research question}
+\subsection{Internship context}
 
-This work was carried out with the MILeS research group at LAMSADE during a master's internship from May to August 2026. The starting question concerned information-theoretic limits on quantized fine-tuning: if a pretrained model is fixed, how much new information must a learned update contain to preserve behavior acquired from a dataset? The first pilots exposed a measurement problem. Rank, parameter count, and nominal precision bound the size of a container. They do not measure the smallest file that preserves the learned behavior.
+
+Having seen the initial offer for the internship posted by my tutors, Paul and Alexandre, I was enthusiastic to start working on it, emailed Alexandre, had an interview with Paul and another with him before they decided to move forward. The internship is taking place from April to September 2026 under the Université Paris Dauphine–PSL. I'm working in practice from the PariSantéCampus offices, and interacting daily with other M2 students, PhD students, and researchers. Under my role of M2 intern, I am part of \emph{MILES (Machine Intelligence and Learning Systems)}, a research group within \emph{LAMSADE}, the \emph{Laboratoire d’Analyse et de Modélisation de Systèmes d’Aide à la Décision}, a joint research laboratory of Université Paris Dauphine–PSL and the CNRS.
+
+LAMSADE is Dauphine’s main computer science and decision-science research laboratory, spanning decision support, optimization, algorithms, data science, and artificial intelligence, while MILES focuses more specifically on the theoretical and algorithmic foundat
+
+\subsection{Research trajectory}
+
+The starting question concerned information-theoretic limits on quantized fine-tuning: if a pretrained model is fixed, how much new information must a learned update contain to preserve behavior acquired from a dataset? After a The first pilots exposed a measurement problem. Rank, parameter count, and nominal precision bound the size of a container. They do not measure the smallest file that preserves the learned behavior.
 
 We did not begin with the definitions used in this report. ``Information in a fine-tune'' could mean the number of trainable values, their nominal precision, the compressibility of the training corpus, or the change in predictions after training. Each meaning calls for a different experiment. Before testing a rate law, we needed a quantity that could survive simple controls. When a proxy failed, we changed the measurement instead of adding runs to the same weak test.
 
 The same problem appeared at inference time. A reasoning trace contains many token vectors, but its length and width do not show whether later computation can reuse a smaller state. A state may be decodable without being causally sufficient. An explicit code may name every state and still drift when the model consumes its own outputs. The thesis therefore asks how much task-relevant information crosses a learned update or reasoning-state interface, and what that representation must preserve for behavior to remain stable.
 
 We did not assume that the two projects shared one theory. The connection appeared after the same kind of failure recurred in both. A representation could look compact or accurate under an internal metric while losing the behavior that mattered. Adapter RMSE improved in cases where task behavior collapsed. A latent label was decodable even when a later operation failed to use it. We began to ask the same questions in each project: who receives the representation, what side information is available, what object is actually constrained, and what happens after the real decoder or update rule consumes it?
-
-\subsection{Research trajectory}
 
 The work passed through four phases. Small QLoRA pilots first varied rank, data repetition, model scale, and the two LoRA factors. They found a low-rank performance knee and a marked $A/B$ asymmetry. A small ARC evaluation gave little signal. Nominal adapter capacity and a noisy downstream score were therefore poor main axes.
 

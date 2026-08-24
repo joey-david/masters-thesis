@@ -1,11 +1,25 @@
 \section{Reasoning trajectories and objective-relative state}
 \label{sec:reasoning}
 
-\subsection{Related work and gap}
+\subsection{Literature review}
 
-Chain-of-thought prompting elicits written intermediate reasoning before an answer \parencite{wei2022chain}. Mechanistic work asks where intermediate variables or step-specific signals appear. Hidden-state studies decode arithmetic state, correctness, or stage information, while latent-reasoning methods feed hidden representations forward without text. Each method chooses a target notion of state. This study asks whether one decomposition works across several targets and whether decoded state forms a causal interface that survives repeated use.
+\subsubsection{Written reasoning and action traces}
 
-We began with a concrete picture: a long verbal derivation might hide a shorter sequence of internal updates. Stable updates across wording and context could help explain how reasoning is organized and support more efficient training or handoff. The tests were easy to fool, however. A projection can make almost any trace look segmented, and a probe can recover labels that the base computation does not use. We moved in stages from visual structure to held-out prediction, intervention, and recursive state use.
+Chain-of-thought prompting elicits written intermediate steps before an answer and improves several reasoning tasks at sufficient model scale \parencite{wei2022chain}. ReAct extends the trace with actions and observations, so intermediate text supports both deliberation and interaction with an environment \parencite{yao2023react}. These methods establish the practical value of extra computation in the sequence. They do not show that each written step matches a discrete internal update or that the text faithfully records the cause of the answer.
+
+Work on efficient entity tracking makes the state problem more exact. Standard attention needs growing depth for a chain of state changes in the formal setting studied by \textcite{fagnou2024chain}, while their modified attention composes the chain more directly. This result concerns an architectural route for updating state, not the existence of a task-general unit in a pretrained model's free-form explanation.
+
+\subsubsection{Hidden trajectories and mechanistic state}
+
+Mechanistic analyses ask which internal components move or write task information. On fictional ontology tasks, \textcite{dutta2024step} report a split between earlier relation transfer and later answer-writing paths. Across abstract rule and analogy tasks, \textcite{yang2025symbolic} identify early symbol abstraction, intermediate induction, and late retrieval components. These studies support structured, task-linked computation, but their units come from the chosen task and intervention target.
+
+Trajectory work shifts the unit of analysis from a component to a position or step. \Textcite{qian2025peaks} identify ``thinking tokens'' with high estimated mutual information, \textcite{yu2025stateaware} study state-aware changes across reasoning stages, and \textcite{sun2026trajectories} report step-specific geometry and correctness signals. The methods differ in target, estimator, and granularity. Their findings motivate a direct test of whether boundaries selected for answer formation, symbolic updates, correctness, and geometric compression agree when the token budget stays fixed.
+
+\subsubsection{Latent reasoning and reusable interfaces}
+
+Continuous latent reasoning removes the requirement that every intermediate state decode to text. Coconut feeds hidden states back into the model as continuous thoughts and trains their repeated use \parencite{hao2025coconut}. A later preprint uses causal perturbations and adversarial tests to argue that apparent latent reasoning can instead rely on weakly meaningful placeholders in some settings \parencite{zhang2025latenttokens}. This disagreement makes output quality alone insufficient evidence for a reusable state interface.
+
+The gap is therefore not a lack of candidate structure. Prior work finds useful tokens, stages, circuits, and latent states, but each selects a notion of state through its task and measure. This chapter asks two stricter questions: whether one token decomposition remains useful across several objectives, and whether a decoded or produced state remains sufficient after the source history is removed and the state is used again. We began with the simpler idea that a long verbal derivation might hide a short series of stable updates. Because projections and probes can reveal correlations that the model never uses, the experiments move from geometry to held-out prediction, intervention, explicit handoff, and recursive closure.
 
 \subsection{Layer schedules: a qualified pilot}
 
