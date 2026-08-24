@@ -29,10 +29,20 @@ This gives a completed reasoning-specific instance of the receiver dependence fo
 
 So far, we thus have evidence for two utility-relative channels. In the training-time channel, the frozen model receives a compressed update and must retain a chosen behavior. In the inference-time channel, a later computation receives a compressed history or state and must retain a chosen use. The experiments show that both channels must be judged by what the receiver can still do.
 
-\subsection{Limits and next test}
+\subsection{Limits of the current bridge}
 
 The span result remains preliminary. It uses one training corpus, two base models, one lexical split point, and far fewer held-out answer tokens than reasoning tokens. One Qwen answer-only seed lacks final metrics. The experiment measures supervised next-token gain and GSM8K accuracy, so it does not establish how RLVR allocates update rate when only an outcome reward is supplied. Nor does it yet show whether a compressed adapter loses internal reasoning structure before or after it loses answer accuracy.
 
-The next direct test is therefore smaller than the former list of proposals. We can take one fixed reasoning adapter, compress it across the same rate ladder, and measure answer accuracy together with the objective-specific boundary, probe, and trajectory quantities from \Cref{sec:reasoning}. Distinct failure thresholds would show that adapter rate is utility-relative even within one trained reasoning model; coincident thresholds would weaken that account.
+More broadly, the two halves of the report still meet at the level of a common question rather than one predictive law. Chapter~\ref{sec:fineqcomp} measures how many adapter bits preserve a behavior, while Chapter~\ref{sec:reasoning} shows that different future uses select different intermediate structure and that recursive use adds a closure requirement. We have not yet shown that a quantity measured before fine-tuning predicts a reasoning-specific rate, or that changing adapter rate predictably changes the internal state properties measured in the reasoning experiments.
+
+\subsection{Promising paths toward a unified result}
+
+The highest-upside next step is to make the two tracks predict each other. The correction-spectrum measure from \Cref{sec:fineqcomp} can be computed on the frozen model separately for reasoning and answer tokens before training. If those utility-specific spectra predict the later $R^{\star}_{M,U}$ values across new models and datasets, the current model-relative account would become a genuinely predictive statement about which parts of a reasoning task are expensive to write.
+
+A second route is to compress one fixed reasoning adapter and follow several properties along the same rate ladder. Besides held-out loss and answer accuracy, we can measure the objective-specific boundaries, operation decoding, trajectory geometry, and explicit state handoff tests from \Cref{sec:reasoning}. If these properties fail at reproducibly different rates, we would have direct evidence that even within one trained model there is no single behavior-independent ``amount of reasoning'' stored in the update. If they fail together, that would instead identify a much stronger common bottleneck.
+
+A third route connects rate directly to recursive reliability. The LoRA adapters that implement the explicit state interfaces can themselves be compressed, after which we can compare one-step transition accuracy with long-horizon closure. A particularly informative outcome would be a regime where local updates remain almost intact while recursive accuracy collapses: the parameter update would still contain enough information for the local operation but not enough to support stable repeated use. This would join the exact-rate experiments to the strongest causal result of the reasoning track in a single experiment.
+
+A paper-quality version of these results should make one of these predictions primary and test it prospectively rather than opening another large exploratory screen. The most convincing package would lock the correction measure and evaluation utilities in advance, test new model--task pairs, and then use the same compressed adapters to connect output behavior, internal reasoning structure, and recursive state use. An outcome-reward/RLVR version would be a natural further extension, but the supervised span controls provide the cleaner first test because they let us name exactly which behavior was trained and which behavior compression must preserve.
 
 \FloatBarrier
