@@ -1,25 +1,27 @@
 \section{Technical Background}
 \label{sec:background}
 
-\subsection{Reasoning language models and trajectories}
-\TODO{Assume transformer attention is known. Define autoregressive generation, explicit chain-of-thought traces, token positions, layers, and hidden-state trajectory notation $h_t^{(\ell)}$. Distinguish text trajectory from latent trajectory.}
+This section introduces the general concepts and terminology needed for the rest of the report. It is intended to bring a machine-learning practitioner who is familiar with neural networks and optimization, but not necessarily with the modern LLM literature, up to speed. Recent work that directly motivates the experiments is deliberately deferred to Sections~\ref{sec:fineqcomp} and~\ref{sec:reasoning}.
 
-\subsection{Low-rank adaptation}
-\TODO{Introduce LoRA from first principles: $W' = W + \frac{\alpha}{r}BA$, matrix dimensions, rank, placement in transformer projections, parameter count, and the frozen base as shared side information. Explain that $A$ and $B$ need not play symmetric functional roles.}
+\subsection{From neural language models to large language models}
+\TODO{Give a compact modern-language-model primer. Explain tokenization, autoregressive next-token prediction, transformer blocks, self-attention and MLP sublayers, residual-stream hidden states, logits, sampling, and context windows. Introduce $p_\theta(y_t\mid x,y_{<t})$, token position $t$, layer $\ell$, and hidden-state notation $h_t^{(\ell)}$. Assume the reader knows ordinary neural networks; do not turn this into a transformer tutorial or survey current architectures.}
 
-\figplaceholder{Diagram: frozen transformer weight $W$ plus low-rank update $BA$, with parameter counts and shared-side-information interpretation.}
+\subsection{Chain-of-thought and reasoning models}
+\TODO{Explain chain-of-thought prompting, reasoning traces, and the distinction between the written token trajectory and the model's internal hidden-state trajectory. Briefly explain why current reasoning models may generate long intermediate traces before an answer. Stop at the general concept: do not introduce our thought-unit hypotheses, segmentation objectives, state abstractions, or the recent papers that motivate them. Those belong in Section~\ref{sec:reasoning}.}
 
-\subsection{Quantized fine-tuning and QLoRA}
-\TODO{Explain quantized frozen backbone versus trainable adapter. Introduce NF4 only to the depth needed later. Make explicit that a 4-bit backbone does not imply a 4-bit learned update. Separate training-memory quantization from deployed adapter quantization.}
+\subsection{Fine-tuning, parameter efficiency, and LoRA}
+\TODO{Explain ordinary fine-tuning and why parameter-efficient fine-tuning is useful for very large models. Introduce LoRA from first principles: $W' = W + \frac{\alpha}{r}BA$, dimensions, rank, typical placement in transformer projections, and the fact that the base model remains frozen. Explain the intuition that the frozen base is shared and only the small update changes. Do not discuss our codec, measured adapter rate, rank experiments, or recent adapter-compression work; Section~\ref{sec:fineqcomp} should introduce those.}
 
-\subsection{Quantization, coding, and rate}
-\TODO{Explain scalar/codebook quantization, scales and metadata, nominal bits/value versus exact serialized decoder-visible bits, and why actual artifact size is the rate used later. Introduce rate--distortion intuition, held-out NLL/code length, behavioral bits written, and $\Rstar(\tau)$.}
+\figplaceholder{Generalist diagram: frozen transformer weight $W$ plus low-rank update $BA$, showing what is shared and what is learned.}
 
-\subsection{Probing internal representations}
-\TODO{Linear probes, PCA/whitening where used, cosine geometry, Gram/HSIC-style statistics. Emphasize decodability $\neq$ canonical organization $\neq$ causal use.}
+\subsection{Quantization and QLoRA}
+\TODO{Explain quantization as representing numerical values with a finite set of levels plus scale/metadata. Introduce the basic memory--accuracy tradeoff and distinguish weight quantization from training in reduced precision. Then explain QLoRA at the level needed later: a frozen low-bit backbone with trainable LoRA adapters. Mention NF4 only briefly. Make clear that a four-bit backbone does not imply a four-bit learned adapter. Do not describe our post-training codec or exact file accounting here.}
 
-\subsection{Causal interventions on representations}
-\TODO{Activation patching/interchange interventions, donor and recipient trajectories, positive/negative controls, matched-position controls, and what causal sufficiency would establish beyond decoding.}
+\subsection{Information, coding, and rate--distortion}
+\TODO{Provide a compact information-theory refresher: surprisal $-\log_2 p(x)$, entropy as expected surprisal, conditional entropy/information when side information is available, code length, compression, and the intuition of rate--distortion theory. Introduce minimum description length only at the level of the general principle that regularities admit shorter descriptions. Use simple examples. Do not define $\Rstar$, behavioral bits written, correction spectra, or any thesis-specific estimator; those are methodological contributions of Section~\ref{sec:fineqcomp}.}
 
-\subsection{Experimental conventions}
-\TODO{Compact table defining seeds, held-out splits, compute matching, rate matching, confidence intervals, exact artifact reload, pre-specified gates, and notation reused throughout.}
+\subsection{Internal representations, probes, and causal interventions}
+\TODO{Explain what researchers mean by an internal representation or activation. Introduce linear probes as tests of decodability and give the essential warning that decodability does not establish causal use. Explain activation patching/interchange interventions generically and why interventions can support stronger causal claims. Define PCA/cosine similarity only if needed to understand later notation. Do not survey the modern reasoning-state literature or our exact controls; Section~\ref{sec:reasoning} does that work.}
+
+\subsection{Common experimental terminology}
+\TODO{Very briefly standardize vocabulary that a general reader will encounter repeatedly: train/validation/test splits, independent random seeds, held-out negative log-likelihood, exact-match accuracy, matched-compute comparisons, confidence intervals, checkpoints, and post-training transformations. Avoid experiment-specific gates, codec reload requirements, rate matching, causal controls, or implementation details; introduce those where they are actually used.}
