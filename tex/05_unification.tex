@@ -1,106 +1,38 @@
-\section{Toward information-theoretic limits of reasoning fine-tuning}
+\section{Information limits in fine-tuning for reasoning}
 \label{sec:unification}
 
-\subsection{Common quantities}
+\subsection{A measured split between reasoning and answer updates}
 
-The two research lines eventually converged on the same practical question: how small can a representation become before it stops preserving the behavior we care about? In fine-tuning, the representation is a serialized parameter update. In reasoning, it may be a partition of a trace or an explicit intermediate state. In both cases, the answer depends on what the receiver already has and on what the representation must still be useful for.
+In our work towards the unification of the two tracks taken during our work so far, we started to study the relative importance and informational weight of the reasoning chain itself versus the final answer. We fine-tuned rank-16 all-linear LoRA adapters on MetaMathQA with two frozen NF4 backbones, Mistral-7B and Qwen2.5-7B. For each model, we trained on the full response, the reasoning span only, or the answer span only.
 
-For the fine-tuning experiments, let $I(D)$ denote a stated measure of information in a training set, $R(A)$ the exact serialized rate of an adapter, and
+After training, each fixed adapter was compressed through the same dense codec ladder used in \Cref{sec:fineqcomp}. We measured the exact serialized file rate in bits per LoRA value and the signed held-out bits per token saved against the frozen model, separately for the reasoning and answer spans. For a frozen model $M$ and span utility $U$, we write
 \begin{equation}
- W(A;D)=L_0(D)-L_A(D)
+ R^{\star}_{M,U}(\tau)=\min_A R(A)
+ \quad\text{such that}\quad
+ W_{M,U}(A)\geq \tau W_{M,U}(A_{\mathrm{raw}}),
 \end{equation}
-its held-out prediction gain over the frozen model. $\Rstar(\tau)$ is the smallest adapter rate that preserves a fraction $\tau$ of that gain. These quantities are directly measured in Chapter~\ref{sec:fineqcomp}.
+where $W_{M,U}$ is the held-out gain on that span.
 
-For reasoning, the analogous object is less settled. Suppose a reasoning trace $T$ is compressed to some representation $Z$, and let $U$ specify what the representation must support: recovering the answer, preserving a symbolic update, predicting correctness, reconstructing latent geometry, or continuing the computation. We can then define a utility-relative description length
-\begin{equation}
- C_U(T;\tau)=\min_{q,f}|q(T)| \quad \text{such that}\quad
- U(f(q(T)))\geq \tau U(T).
-\end{equation}
-This is a proposed way to formalize the next question, not a quantity that the current token-boundary experiments have fully measured.
+On the Mistral model, full-response and reasoning-only supervision save respectively 0.567 and 0.568 bits per reasoning token; on Qwen, they save 0.101 and 0.100. Adding answer supervision therefore seems to have only a negligible effect on the bit rate.
 
-The analogy is therefore limited but useful. Both problems ask for a minimum rate under a stated behavioral requirement. They do \emph{not} imply that adapter bits and reasoning-state bits obey the same coding theorem, or that one conserved quantity flows from the training set into the reasoning trace.
 
-\begin{figure}[!htbp]
-\centering\small
-\fbox{\parbox[c][1.5cm][c]{.16\linewidth}{\centering Dataset\\$I(D)$}}
-$\xrightarrow{\text{training}}$
-\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering Serialized update\\$R(A)$}}
-$\xrightarrow{\text{base model}}$
-\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering Reasoning trace\\$T$}}
-$\xrightarrow{\text{utility }U}$
-\fbox{\parbox[c][1.5cm][c]{.19\linewidth}{\centering State or partition\\$C_U(T)$}}
-\caption[Unified training-time and inference-time information channels.]{The two research lines share a rate--utility perspective, but each arrow is a different channel with different side information. The report does not claim a conserved information quantity across the full chain.}
-\label{fig:unified-flow}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{fineqcomp/plots/cot_finetuning_limits.pdf}
+\caption[Rate limits for reasoning and answer supervision.]{Fine-tuning rate and behavior for the MetaMathQA span-supervision study. Left: held-out gain retained by compressed full-response adapters, averaged over three seeds; shading shows the seed range. Right: mean GSM8K exact match for the raw adapters; error bars show the seed range.}
+\label{fig:cot-finetuning-limits}
 \end{figure}
 
-\FloatBarrier
-\subsection{What the results jointly show}
+\subsection{Initial analysis}
 
-The clearest common lesson is that nominal size is a poor substitute for useful information. In Chapter~\ref{sec:fineqcomp}, LoRA rank and weight RMSE do not determine how small an adapter can become while preserving behavior. In Chapter~\ref{sec:reasoning}, token count or codebook size does not determine whether an intermediate representation is useful for a later computation.
+This gives a completed reasoning-specific instance of the receiver dependence found in \Cref{sec:fineqcomp}. A training corpus does not have one adapter rate by itself. The required rate depends on the frozen model and on which learned behavior must survive compression. It also matches the objective-relative result in \Cref{sec:reasoning}: answer formation, symbolic updates, correctness, and continuation need not select the same representation. At training time, the carrier is a serialized adapter; at inference time, it is a trace partition or state code. In both cases, nominal size alone does not identify the information that supports a stated use.
 
-The second common lesson is that fidelity must be measured through use. An adapter with lower weight RMSE can preserve less task behavior. Two memories with the same initial state information can diverge sharply once they are updated over time. A code can distinguish every semantic state and still fail if the same state receives different names along different paths. These examples all separate ``the representation contains something'' from ``the representation supports the computation we need.''
+So far, we thus have evidence for two utility-relative channels. In the training-time channel, the frozen model receives a compressed update and must retain a chosen behavior. In the inference-time channel, a later computation receives a compressed history or state and must retain a chosen use. The experiments show that both channels must be judged by what the receiver can still do.
 
-The fine-tuning experiments add one more ingredient: the receiver. The same five corpora have different rate orderings on Mistral-7B and Qwen2.5-7B, and the strongest current predictor is built from the corrections requested relative to the frozen model. This suggests that the relevant information is conditional on both the receiver and the intended behavior, rather than being an intrinsic property of the source dataset alone.
+\subsection{Limits and next test}
 
-\begin{table}[!htbp]
-\centering\small
-\begin{tabular}{>{\raggedright\arraybackslash}p{.22\linewidth}>{\raggedright\arraybackslash}p{.32\linewidth}>{\raggedright\arraybackslash}p{.32\linewidth}}
-\toprule
-Question & Update evidence & Reasoning-state evidence \\
-\midrule
-Is nominal size enough? & Rank and bit width do not determine the smallest useful file. & Token count and codebook size do not determine a useful state. \\
-Does geometric error order behavior? & Lower RMSE can retain much less prediction gain. & Equal initial state information can produce very different closed-loop regret. \\
-Is more capacity sufficient? & Increasing LoRA rank also increases the carrier cost. & A larger path-aliased code can be worse than a smaller canonical one. \\
-What preserves behavior? & A reloadable update under a stated behavioral target. & A sufficient state with stable naming and reliable self-updates. \\
-\bottomrule
-\end{tabular}
-\caption{Parallel lessons from the two experimental lines. The rows state analogies, not equivalences.}
-\label{tab:common-lessons}
-\end{table}
+The span result remains preliminary. It uses one training corpus, two base models, one lexical split point, and far fewer held-out answer tokens than reasoning tokens. One Qwen answer-only seed lacks final metrics. The experiment measures supervised next-token gain and GSM8K accuracy, so it does not establish how RLVR allocates update rate when only an outcome reward is supplied. Nor does it yet show whether a compressed adapter loses internal reasoning structure before or after it loses answer accuracy.
 
-We only recognized this connection late in the internship. The adapter RMSE experiment and the native-state routing experiment failed for different technical reasons, but in both cases an internal measure looked satisfactory while downstream behavior did not. The exact controller then reproduced the same distinction without neural estimation noise. That recurrence is what motivates the shared rate--utility language, rather than a claim that the two settings are mathematically identical.
-
-\FloatBarrier
-\subsection{Falsifiable conjectures}
-
-The current evidence suggests four concrete hypotheses for follow-up work:
-
-\begin{enumerate}[leftmargin=*]
-    \item \textbf{Adapter rate is receiver-dependent.} After matching training exposure, support, and behavioral gain, changing content diversity should change $\Rstar$ differently for different frozen models or tasks. This would be weakened if the diversity effect disappeared under those controls or if one task-independent scalar predicted all rates.
-
-    \item \textbf{Different properties of a reasoning model fail at different adapter rates.} When one reasoning adapter is progressively compressed, answer accuracy, probe structure, trajectory geometry, and objective-specific boundaries need not disappear at the same point. The hypothesis fails if their rate thresholds consistently coincide across models and tasks.
-
-    \item \textbf{Reasoning-state rate is utility-relative.} A compact representation that is best for answer recovery need not be best for symbolic state, correctness, or causal continuation. The hypothesis fails if one compressor consistently dominates the others at matched rate across all tested utilities.
-
-    \item \textbf{Long-horizon reliability is determined by self-conditioned transition errors.} Recursive state accuracy should be predictable from the errors the model makes when updating its own previous outputs, not from one-step accuracy on gold states. The hypothesis fails if measured long-horizon errors systematically disagree with that propagation model.
-\end{enumerate}
-
-These conjectures are deliberately phrased so that the next experiments can reject them. This is also how the project evolved: appealing informal ideas became useful only once we identified a control that could make them fail.
-
-\subsection{Experiment 1: diversity without support or gain confounds}
-
-The next fine-tuning experiment should make the content-diversity question cleaner. In the current XBRL setup, increasing the number of companies changes both diversity and which companies are represented in training. A better design would keep training and test support fixed while varying the number of distinct rules, contexts, or compositions represented in the examples. Optimizer steps and total example presentations should remain matched as before.
-
-A second control should match the absolute behavioral improvement of the raw adapters. The current two-model comparison often asks the same dataset to teach very different amounts to Mistral and Qwen. Matching the achieved gain would let us ask whether two model--task pairs that learn equally much nevertheless require different update rates. Together, support matching and gain matching would test whether the remaining variation really comes from model-relative content structure.
-
-\subsection{Experiment 2: adapter rate versus reasoning structure}
-
-The most direct way to connect the two research lines is to train one reasoning adapter and compress that fixed checkpoint across a dense rate ladder. At each rate, we would measure ordinary behavior---answer accuracy and held-out loss---alongside the internal quantities used in Chapter~\ref{sec:reasoning}, such as operation decoding, trajectory geometry, and objective-specific boundary structure.
-
-This experiment asks whether output behavior and internal organization disappear at the same compression rate. If internal structure fails while task accuracy remains high, some of that structure is not required for the measured behavior. If task behavior fails first, our internal metrics are too weak to certify the computation. Either outcome would be informative without assuming in advance that the two types of rate are the same.
-
-\subsection{Experiment 3: utility-relative state rate}
-
-The reasoning analogue is to apply several compression schemes to the same held-out traces---for example token deletion, learned boundary selection, opaque finite codes, and explicit symbolic summaries---and evaluate each representation under several future uses. Instead of averaging these uses into one score, we would obtain a separate rate--utility curve for answer recovery, symbolic updates, correctness, causal interchange, and recursive continuation.
-
-The objective-relative boundary result predicts that these curves will cross: a representation that is compact and useful for one purpose may be poor for another. The explicit-state experiments add a particularly strict test, because a representation only counts as a reusable causal state if it can support a new operation after the original history has been removed.
-
-\subsection{Limits of the present evidence}
-
-The fine-tuning results remain limited in scope. The main comparison uses two 7B base models and five corpora, while several mechanistic controls use only Mistral-7B and rank-16 LoRA. The known-information task is synthetic. Most importantly, the correction-gradient measure was selected from ten candidates on the same 22 model--dataset conditions used to evaluate it. The adjusted permutation test reduces selection bias, but it does not replace a prospective replication on new models and tasks. The SQL/XBRL diversity experiment also leaves a support-coverage confound in XBRL.
-
-The reasoning results have different limitations. Most token-level experiments use arithmetic traces, and the judged semantic analysis has only 12 held-out traces. The exact memory experiment uses hand-designed finite environments. The strongest explicit-state result uses a 16-state Horn system with direct code supervision and many model calls, so part of its success may come from fitting a small transition system. The mixed-register failure shows that the same approach can break once the local transition function becomes less reliable.
-
-For these reasons, the synthesis in this chapter should be read as a research program rather than a theorem. A single task-independent representation that preserved every tested utility at matched rate would directly challenge the objective-relative account. Conversely, merely failing on larger tasks would not confirm it, because training difficulty or search could produce the same failure. The next stage needs both exact small controls and harder natural-task tests.
+The next direct test is therefore smaller than the former list of proposals. We can take one fixed reasoning adapter, compress it across the same rate ladder, and measure answer accuracy together with the objective-specific boundary, probe, and trajectory quantities from \Cref{sec:reasoning}. Distinct failure thresholds would show that adapter rate is utility-relative even within one trained reasoning model; coincident thresholds would weaken that account.
 
 \FloatBarrier
