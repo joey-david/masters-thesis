@@ -30,6 +30,7 @@ For every candidate reference, record:
 - LoRA — verify ICLR 2022 publication and the exact low-rank update formulation.
 - QLoRA — verify NeurIPS 2023 and details relevant to NF4 / frozen quantized backbone.
 - AdaLoRA — only if adaptive rank allocation is directly compared conceptually.
+- Transformers are Inherently Succinct — verified ICLR 2026 publication; use only for the formal succinctness result and as intuition for treating the frozen transformer as a powerful decoder, not as direct evidence about LoRA fine-tuning.
 
 ### Adapter / quantized fine-tuning compression
 
@@ -37,7 +38,8 @@ For every candidate reference, record:
 - QA-LoRA — verify ICLR 2024 and distinguish quantization-aware adaptation from post-training adapter compression.
 - LoftQ — verify ICLR 2024 and relevance to initialization / quantization-aware LoRA.
 - ApiQ — verify status and exact contribution before inclusion.
-- ParetoQ — only if needed for broader low-bit quantization context.
+- ParetoQ — verified NeurIPS 2025 publication; use for the unified 1/1.58/2/3/4-bit comparison and the reported transition between the <=2-bit and >=3-bit regimes.
+- Radio: Rate--Distortion Optimization for Large Language Model Compression — verified ICML 2025 publication; use for the explicit rate--distortion framing of post-training LLM quantization and user-specified size/accuracy targets.
 - LoRAQuant — verified existence as arXiv:2510.26690; OpenReview status previously observed as withdrawn for ICLR 2026. Re-check before final citation and do not call it an accepted ICLR paper.
 - "How Many Bits Can an Adapter Write? Measuring the Capacity and Memorization of Parameter-Efficient Fine-Tuning" — verified existence as arXiv:2607.21351 (July 2026); re-check authors/claims from primary PDF before adding BibTeX.
 
@@ -47,6 +49,7 @@ For every candidate reference, record:
 - Prequential coding / online coding — verify exact source used for behavioral/data codelength arguments.
 - Rate–distortion theory — foundational reference if the mathematical analogy is used explicitly.
 - Compression-based generalization/PAC-Bayes papers — include only if directly used, not as decorative theory.
+- Arora et al. 2018 — verified ICML 2018 publication; use for the explicit-compression generalization framework and the intuition that a trained network can admit a substantially shorter behavior-preserving description than raw parameter counting suggests.
 
 ## Section IV candidate families
 
@@ -98,6 +101,10 @@ The following entries passed the audit against the Zotero PDF and, where present
 | `xiao2023smoothquant` | VERIFIED, ICML 2023 | paper PDF | SmoothQuant moves activation difficulty into weights before integer quantization. |
 | `yao2022zeroquant` | VERIFIED, NeurIPS 2022 | paper PDF | ZeroQuant combines group quantization and layer-wise distillation. |
 | `lin2024awq` | VERIFIED, MLSys 2024 | paper PDF | AWQ selects salient weight channels using activation statistics. |
+| `young2025radio` | VERIFIED, ICML 2025 | PMLR proceedings page and paper | Frames post-training LLM quantization through rate--distortion optimization and supports targeting a specified compressed size or accuracy. |
+| `liu2025paretoq` | VERIFIED, NeurIPS 2025 | NeurIPS proceedings and paper | Unified comparison across 1, 1.58, 2, 3, and 4 bits; reports a learning transition between the <=2-bit and >=3-bit regimes and a nontrivial size--accuracy Pareto frontier. |
+| `arora2018compression` | VERIFIED, ICML 2018 | PMLR proceedings abstract and paper | Uses explicit succinct reparameterizations of trained networks to derive substantially stronger compression-based generalization bounds; supports the distinction between raw parameter count and effective description length. |
+| `bergstrasser2026succinct` | VERIFIED, ICLR 2026 | ICLR proceedings and OpenReview paper | Fixed-precision transformers can be exponentially more succinct than LTL and recurrent networks and doubly exponentially more succinct than finite automata for formal-language representation. This is used only as intuition for receiver-relative description length. |
 | `zhou2019pacbayes` | VERIFIED, ICLR 2019 | paper PDF | A compressed network can define a PAC-Bayes generalization bound. |
 | `lotfi2022pacbayes` | VERIFIED, NeurIPS 2022 | paper PDF | Learned compression can tighten PAC-Bayes bounds. |
 | `yao2023react` | VERIFIED, ICLR 2023 | arXiv:2210.03629 PDF | ReAct interleaves reasoning, actions, and observations. |
