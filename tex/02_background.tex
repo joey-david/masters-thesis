@@ -1,121 +1,91 @@
 \section{Technical background}
 \label{sec:background}
 
-\subsection{Text and latent trajectories}
+This section introduces the general concepts and notation needed for the rest of the report. It is intended for a machine-learning reader familiar with neural networks and optimization, but not necessarily with the conventions of modern large language models, parameter-efficient fine-tuning, or representation analysis. The more specialized recent literature that directly motivates our experiments is deferred to the literature reviews in \Cref{sec:fineqcomp,sec:reasoning}.
 
-For prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model defines $p_\theta(y_{1:T}\mid x)=\prod_t p_\theta(y_t\mid x,y_{<t})$. Chain-of-thought prompting makes intermediate steps part of this token sequence and can improve arithmetic, symbolic, and commonsense reasoning \parencite{wei2022chain}. ReAct interleaves such reasoning with actions and observations, making the written trace part of a control loop rather than a free-standing explanation \parencite{yao2023react}. A written chain of thought still differs from the latent path. Let $h_t^{(\ell)}\in\mathbb{R}^d$ be the residual-stream state at generated position $t$ and layer $\ell$. Text boundaries need not coincide with changes in $(h_1^{(\ell)},\ldots,h_T^{(\ell)})$, and a label decoded from this path need not control later computation.
+\subsection{Transformers and autoregressive language models}
 
-This distinction motivates work at several scales. Mechanistic studies localize information transfer and answer-writing components across layers \parencite{dutta2024step}; trajectory studies measure step-specific geometry and correctness signals \parencite{sun2026trajectories}; and token-level work identifies positions with high estimated mutual information about the answer \parencite{qian2025peaks}. These results establish that reasoning traces contain useful structure. They do not establish that one layer, token boundary, or decoded variable is the state needed by every later use.
+A language model assigns probabilities to sequences of discrete tokens. Modern large language models (LLMs) typically tokenize text into subword units, map each token to a vector representation, and process the resulting sequence through many transformer blocks. Each block combines self-attention, which lets a position aggregate information from earlier positions, with feed-forward transformations. Residual connections carry a vector-valued representation through the successive layers of the network.
 
-\subsection{Low-rank and quantized adaptation}
-
-LoRA keeps $W\in\mathbb{R}^{d_{\rm out}\times d_{\rm in}}$ fixed and learns
+For a prompt $x$ and generated tokens $y_{1:T}$, an autoregressive model factorizes the probability of the continuation as
 \begin{equation}
- W'=W+\Delta W,\qquad \Delta W=\frac{\alpha}{r}BA,
+    p_\theta(y_{1:T}\mid x)
+    = \prod_{t=1}^{T} p_\theta(y_t\mid x,y_{<t}).
 \end{equation}
-where $A\in\mathbb{R}^{r\times d_{\rm in}}$ and $B\in\mathbb{R}^{d_{\rm out}\times r}$ \parencite{hu2022lora}. The receiver knows the frozen model and the placement of each pair, so only the learned factors and decoder metadata need transmission. The two factors have different roles: $A$ maps inputs into rank coordinates and $B$ maps them back. Equal size does not imply equal behavioral value.
+At each position, the final hidden representation is mapped to logits over the vocabulary and then to a probability distribution for the next token. Generation repeatedly samples or selects from this distribution and appends the chosen token to the context.
 
-QLoRA stores the frozen backbone in a low-bit format while training higher-precision adapters \parencite{dettmers2023qlora}. NF4 code points suit an approximately normal weight distribution, and block scales recover local magnitude. This saves training memory. The four-bit backbone says nothing about the rate of the learned update, which must be coded after training.
+We write $h_t^{(\ell)}\in\mathbb{R}^d$ for the hidden representation at token position $t$ and layer $\ell$. For a fixed generated sequence, the collection $(h_1^{(\ell)},\ldots,h_T^{(\ell)})$ can be viewed as a trajectory through representation space. This latent trajectory is distinct from the visible text sequence: two similar sentences can be represented differently internally, and a large internal change need not coincide with a linguistic boundary.
 
-Low-dimensional adaptation has two distinct precedents. Intrinsic-dimension experiments show that language-model fine-tuning can succeed in a small learned subspace \parencite{aghajanyan2021intrinsic}, while adapter analysis finds that the two LoRA factors can play unequal roles \parencite{zhu2024asymmetry}. Neither result fixes a serialized bit rate: dimension limits the space in which an update varies, while a code also chooses precision, scales, indices, and headers.
+\subsection{Chain-of-thought and reasoning traces}
 
-Post-training quantization supplies useful codec designs and controls. GPTQ uses approximate second-order information to quantize weights sequentially \parencite{frantar2023gptq}; SmoothQuant shifts activation outliers into weights before quantization \parencite{xiao2023smoothquant}; ZeroQuant combines hardware-aware group quantization with layer-wise knowledge distillation \parencite{yao2022zeroquant}; and AWQ protects weight channels selected through activation statistics \parencite{lin2024awq}. These methods target whole-model size, speed, or reconstruction. The adapter experiments below instead hold one trained update fixed and measure the smallest decoded file that preserves its behavior.
+Chain-of-thought (CoT) prompting asks a language model to produce intermediate reasoning steps before its final answer. This simple change can substantially improve performance on multi-step reasoning tasks \parencite{wei2022chain}. Models trained or prompted to produce such traces are often called reasoning language models (RLMs) in this report.
+
+A CoT trace gives two related objects to study. The first is the written trajectory: the sequence of generated tokens, sentences, equations, or explicit intermediate claims. The second is the latent trajectory formed by the model's hidden representations while generating those tokens. The written trace is directly observable, while the latent trajectory requires access to model activations. Nothing in the autoregressive architecture requires meaningful computational steps to coincide with sentences, punctuation, or any other fixed textual unit.
+
+This distinction is important throughout the reasoning part of the report. A property may be visible in the text, decodable from a hidden state, or actually used by later computation; these are different claims and require different evidence.
+
+\subsection{Fine-tuning, parameter efficiency, and LoRA}
+
+Pretraining produces a general-purpose parameter vector $\theta_0$. Fine-tuning adapts that model to a new dataset or task by continuing optimization on a new objective. Full fine-tuning updates most or all model parameters. Parameter-efficient fine-tuning instead keeps most of the pretrained model fixed and learns a much smaller task-specific object.
+
+Low-Rank Adaptation (LoRA) is a widely used example \parencite{hu2022lora}. For a pretrained weight matrix $W\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}}$, LoRA freezes $W$ and learns a low-rank update
+\begin{equation}
+    W' = W + \Delta W,
+    \qquad
+    \Delta W = \frac{\alpha}{r}BA,
+\end{equation}
+where $A\in\mathbb{R}^{r\times d_{\mathrm{in}}}$, $B\in\mathbb{R}^{d_{\mathrm{out}}\times r}$, and $r$ is much smaller than the dimensions of $W$. LoRA modules can be inserted into several projections of each transformer block while the underlying pretrained weights remain unchanged.
+
+This gives a useful separation between a \emph{base model}, which is shared, and a comparatively small learned \emph{adapter}. Rank controls the dimension of the update parameterization, but it should not be confused with a number of information bits: the learned matrix entries still need numerical values, and many different numerical representations are possible at the same rank.
 
 \begin{figure}[t]
 \centering
 \small
 \begin{tabular}{c@{\quad}c@{\quad}c}
-\fbox{\parbox[c][1.6cm][c]{.23\linewidth}{\centering Shared frozen weight\\$W$}} &
+\fbox{\parbox[c][1.5cm][c]{.23\linewidth}{\centering Frozen pretrained\\weight $W$}} &
 $+$ &
-\fbox{\parbox[c][1.6cm][c]{.30\linewidth}{\centering Transmitted update\\$A\xrightarrow{\;r\;}B$}} \\
+\fbox{\parbox[c][1.5cm][c]{.28\linewidth}{\centering Trainable low-rank\\update $BA$}} \\
 & $\Downarrow$ & \\
-\multicolumn{3}{c}{\fbox{\parbox[c][1.45cm][c]{.66\linewidth}{\centering Effective weight $W'=W+(\alpha/r)BA$\\evaluated inside the shared base model}}}
+\multicolumn{3}{c}{\fbox{\parbox[c][1.35cm][c]{.64\linewidth}{\centering Adapted weight $W'=W+(\alpha/r)BA$}}}
 \end{tabular}
-\caption[LoRA as a communication problem.]{LoRA as a communication problem. The base weight and adapter layout are shared side information. The learned factors and all metadata needed to reconstruct them form the message whose rate is measured.}
+\caption[Low-rank adaptation of a frozen weight.]{LoRA keeps the pretrained matrix fixed and learns a low-rank update. The base model is shared across fine-tunes; only the adapter changes.}
 \label{fig:lora-channel}
 \end{figure}
 
-\subsection{Exact rate and behavioral distortion}
+\subsection{Quantization and QLoRA}
 
-An adapter file contains tensor shapes, scales, code identifiers, packed indices, selectors, and headers. Nominal bits per value count only part of the file. This report uses
+Neural-network parameters are usually stored as floating-point numbers. Quantization represents them with a smaller finite set of values. A simple quantizer stores, for example, an integer code for each weight together with one or more scale parameters that map the codes back to approximate real values. Fewer available levels reduce memory use but increase numerical distortion.
+
+Quantization can be applied to different objects for different reasons. A pretrained backbone may be quantized to reduce memory during inference or fine-tuning, while a separately learned adapter may remain in higher precision. QLoRA uses this distinction explicitly: it keeps a pretrained model in a four-bit quantized representation while training LoRA adapters through it \parencite{dettmers2023qlora}. Its NormalFloat-4 (NF4) representation is designed for weight distributions encountered in pretrained networks.
+
+The distinction matters later: saying that a model was trained with a four-bit backbone does not imply that its learned LoRA update is itself a four-bit object. Backbone quantization, adapter parameterization, and post-training compression are separate operations.
+
+\subsection{Information, coding, and rate--distortion}
+
+Information theory provides a language for relating probability, coding, and compression. If an event $x$ has probability $p(x)$, its surprisal in bits is
 \begin{equation}
- R(A)=8\,|\operatorname{serialize}(A)|
+    -\log_2 p(x).
 \end{equation}
-and, where useful, divides by the number of values in the raw adapter. The decoder must reconstruct the tensors from that file and shared protocol; every point is evaluated after decoding from disk.
+The entropy of a random variable is the expected surprisal. In an ideal code, more probable events can be represented with shorter descriptions, so negative log-probability can also be interpreted as an idealized code length. For a language model, average negative log-likelihood therefore measures both predictive error and the number of bits per token that the model would need in an ideal probabilistic code.
 
-Rate--distortion theory asks for the least rate that meets a distortion limit \parencite{berger1971rate,cover2006elements}. Let $L_0(D)$, $L_A(D)$, and $L_{\widehat A}(D)$ be held-out NLL for the base, raw adapter, and coded adapter. Retained gain is
-\begin{equation}
- \rho(\widehat A;D)=\frac{L_0(D)-L_{\widehat A}(D)}{L_0(D)-L_A(D)},
- \qquad
- \Rstar(\tau)=\min_{\rho\geq\tau}R(\widehat A).
-\end{equation}
-$\Rstar$ is undefined if the raw adapter fails an absolute learning gate and censored if the codec ladder does not bracket the crossing. Weight RMSE, held-out NLL, and exact task accuracy are distinct distortions.
+Conditional quantities express the value of information when some side information is already known. If both sender and receiver already possess a pretrained model, for example, the question is not how many bits are required to describe that model again, but how many additional bits are needed to specify whatever changes relative to it. Mutual information similarly measures how much knowing one random variable reduces uncertainty about another. These concepts are standard; later chapters define the particular operational quantities used in our experiments.
 
-Minimum description length connects learning to the length of a model and data code \parencite{grunwald2019mdl}. Compression-based generalization work instead turns a short description or compressed posterior into a bound \parencite{arora2018compression,zhou2019pacbayes,lotfi2022pacbayes}. This report borrows the discipline of counting a complete message, not the conclusion of those bounds. Its rate is an observed artifact size and its distortion is held-out behavior; it does not claim that a short adapter alone proves generalization.
+Rate--distortion theory asks how small a representation can be while keeping some notion of error below an acceptable level \parencite{cover2006elements}. The key point is that a rate has meaning only together with a distortion measure. Two compressed objects with the same numerical reconstruction error can behave differently if errors occur in different functionally important directions. Conversely, a representation may differ substantially in Euclidean space while preserving the behavior that matters.
 
-\begin{figure}[t]
-\centering\small
-\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Train once\\raw adapter}}
-$\rightarrow$
-\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Encode\\rate ladder}}
-$\rightarrow$
-\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Write file\\count bytes}}
-$\rightarrow$
-\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Decode\\fresh path}}
-$\rightarrow$
-\fbox{\parbox[c][1.35cm][c]{.17\linewidth}{\centering Evaluate\\behavior}}
-\caption[Fixed-checkpoint exact-rate measurement loop.]{The fixed-checkpoint measurement loop. Training variance is removed from the codec frontier because every point starts from the same raw adapter.}
-\label{fig:codec-loop}
-\end{figure}
+Minimum Description Length (MDL) uses description length as a way of expressing regularity: a model or explanation is useful when it gives a short joint description of the model and the observations \parencite{grunwald2019mdl}. In this report, MDL and rate--distortion ideas provide conceptual motivation, while the exact rate and distortion used for the LoRA experiments are defined in \Cref{sec:fineqcomp}.
 
-\subsection{Probes, state, and interventions}
+\subsection{Internal representations, probes, and causal interventions}
 
-A probe fits a decoder on training traces and tests it on held-out questions. PCA, whitening, cosine changes, path length, and Gram statistics describe representation geometry. These measurements support different claims. Decodability shows accessible correlation. Raw geometry that beats its controls suggests an organization visible without labels. Causal use requires an intervention.
+Hidden representations can contain information that is not explicit in the generated text. A common way to test this is a \emph{probe}: a simple supervised model, often linear, is trained to predict a property of interest from hidden activations. High held-out probe performance shows that the property is statistically accessible from the representation under the chosen decoder.
 
-Prior work illustrates the range of possible state claims. Entity-tracking analysis gives a depth lower bound for standard attention and proposes a chain-aware mechanism \parencite{fagnou2024chain}. Mechanistic work on abstract reasoning reports early abstraction, middle-layer symbolic induction, and late retrieval components \parencite{yang2025symbolic}. State-aware trajectory analysis, by contrast, treats changes in hidden representations as empirical reasoning stages \parencite{yu2025stateaware}. The objects differ: an architectural memory rule, a circuit component, and a decoded stage are not interchangeable forms of evidence.
+Geometric analyses ask related but unsupervised questions. Principal component analysis can identify high-variance directions; cosine similarity measures changes in direction; distances or local statistics can reveal how a trajectory evolves through representation space. Such measurements describe organization in the representation but do not by themselves show that the model uses that organization causally.
 
-Interchange replaces a recipient activation or code with one from a donor, then tests whether the output changes as the donor semantics predict. Same-state, different-state, matched-position, random-subspace, and gold-state controls separate a state effect from scale or position. An explicit handoff removes the old history and requires a second call to act using only the supplied state and a new rule. For closure, a model-produced state must remain valid after another legal update.
-
-\begin{figure}[t]
-\centering\small
-\begin{tabular}{p{.44\linewidth}p{.44\linewidth}}
-\centering\textbf{Probe} & \centering\textbf{Causal handoff}\tabularnewline[2pt]
-\fbox{\parbox[c][2.2cm][c]{.40\linewidth}{\centering history $H$ $\rightarrow$ hidden vector $h$\\$h\rightarrow$ decoded label\\\emph{Is state readable?}}} &
-\fbox{\parbox[c][2.2cm][c]{.40\linewidth}{\centering history $H$ $\rightarrow$ code $c$\\delete $H$; $(c,u)\rightarrow$ output\\\emph{Is state sufficient and reusable?}}}
-\end{tabular}
-\caption[Probe versus causal state handoff.]{Decoding and use answer different questions. A handoff removes the original history, so a successful continuation must depend on the transmitted state.}
-\label{fig:probe-handoff}
-\end{figure}
-
-\subsection{Decision state and closed-loop utility}
-
-In a partially observed control task, histories $H$ are equivalent only relative to the future decisions they support. A representation $Z=f(H)$ can have high mutual information $I(Z;S)$ with latent state $S$ at the start of evaluation and still lose useful observations later. Closed-loop regret measures the resulting decision distortion:
-\begin{equation}
- D(Z)=V^{\star}-V^{\pi_Z},
-\end{equation}
-where $\pi_Z$ plans through the real update rule of $Z$. This prevents an evaluator from granting a small-memory controller hidden access to the full history after the first action.
-
-Latent-reasoning methods make the update rule explicit by feeding hidden representations back as later inputs. Coconut replaces some written steps with continuous thoughts and trains the model to use those states recursively \parencite{hao2025coconut}. A later causal and adversarial study questions whether such latent tokens always carry the structured computation suggested by their outputs \parencite{zhang2025latenttokens}. Together, these works motivate separate tests for decodability, causal sufficiency, and stability under self-conditioned reuse.
+Causal interventions provide stronger evidence. In activation patching or interchange experiments, an internal activation from one computation is replaced by an activation from another and the downstream output is observed. If changing a representation changes later behavior in the way predicted by its proposed semantics, this supports a causal role. It is therefore useful to keep three claims separate throughout the report: a variable may be \emph{decodable}, may form a clear \emph{geometric structure}, and may be \emph{causally used}; none of these automatically implies the others.
 
 \subsection{Experimental conventions}
 
-To keep comparisons across the two research tracks consistent, the report uses the conventions in \Cref{tab:conventions}. Splits follow the independent unit of each task, compute and rate matches use measured resources, and a coded adapter is scored only after reload. Claims remain provisional until saved evaluations clear their stated learning, bracketing, and control gates.
+The experiments use a few standard conventions repeatedly. Training data determine the learned parameters; validation data may be used for model or checkpoint selection; held-out test data are reserved for estimating generalization. Independent random seeds give repeated training runs under the same nominal condition and expose optimization variance.
 
-\begin{table}[H]
-\centering\small
-\begin{tabular}{p{.23\linewidth}p{.69\linewidth}}
-\toprule
-Term & Rule \\
-\midrule
-Held-out unit & Split questions, program contexts, or latent families; never split tokens from one trace across train and test. \\
-Compute match & Equal optimizer updates and samples seen; interface controls also match forwards, padding, and targets. \\
-Rate match & Actual decoded file sizes or an exact finite code alphabet. \\
-Reload & Serialize, decode, attach to the frozen model, then score. \\
-Uncertainty & Independent seeds or bootstrap over the independent question or context. \\
-Gate & Fix learning, bracketing, or control checks before the main comparison. \\
-Status & Saved evaluation output is a result; code, a smoke test, or a launch plan is not. \\
-\bottomrule
-\end{tabular}
-\caption{Conventions used throughout the report.}
-\label{tab:conventions}
-\end{table}
+For language modeling, we frequently report held-out negative log-likelihood (NLL), often converted to bits per token using base-two logarithms. This is a dense metric because every scored token contributes an observation. Exact-match accuracy is much sparser but directly tests whether the final structured answer is correct. The two should not be treated as interchangeable.
+
+Controlled comparisons also require matching the resource that is meant to stay fixed. Depending on the experiment, this can mean the same number of optimizer updates, examples, tokens, parameters, or representational capacity. The relevant matching rule is stated with each experiment rather than assumed from a shared nominal setting.
