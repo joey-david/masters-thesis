@@ -41,9 +41,14 @@ The internship began with an information-theoretic study of fine-tuning, where e
 \label{fig:timeline}
 \end{figure}
 
+\subsection{Conceptual thread}
+
+Although the report follows the chronology of the internship, one idea now links the whole project. By ``useful information'' I do not mean a quantity attached intrinsically to a dataset, an adapter, or a reasoning trace. A representation is only useful relative to a receiver and to what that receiver must still be able to do. For fine-tuning, the receiver is the frozen base model interpreting an adapter; for reasoning, it is the later computation consuming a boundary or state. When a state is reused recursively, the update rule also matters, because a representation can be sufficient once and fail after repeated use.
+
+This was not the assumption we started from. It emerged as simpler explanations failed: rank, corpus size, weight reconstruction error, and learning gain were insufficient on the fine-tuning side, while canonical boundaries and decodable states were insufficient on the reasoning side. I therefore keep the chronological narrative, but interpret each major result through this common lens.
 \subsection{Structure of the report}
 
-This report's chapters follows a chronological order with respect to which research directions were tackled first. Given that the goal of this report is as much to highlight our researching process as to explain the results this process yielded, negative results remain in it, as they often determined the next experiment to be ran, if not a high-level course adjustment. We begin by with a brief exploration of the technical background to the research we led, including an overview of the relevant concepts. Then, before each of the two main sections (respectively information-theoretic limits of finetuning and reasoning trajectories), we give an overview of the literature, before explaining how they contributed to motivating our initial research questions.
+The report follows the order in which the research developed. This is deliberate: negative results often determined the next experiment or redirected the project entirely. Within each research chapter, I make that logic explicit through the same sequence: a hypothesis, an experiment designed to test it, the resulting observation, the explanation or alternative that this rules out, and the next question that follows. After a short technical background, the two main chapters develop the fine-tuning and reasoning tracks in that form before \Cref{sec:unification} brings them together.
 
 \subsection{Research questions}
 
