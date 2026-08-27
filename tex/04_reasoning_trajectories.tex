@@ -1,6 +1,8 @@
 \section{Reasoning trajectories and objective-relative state}
 \label{sec:reasoning}
 
+This chapter asks the inference-time version of the same question. Does a chain of thought contain one intrinsic decomposition or state description, or does the useful structure depend on what a later computation needs from it? We began with the stronger, more natural hypothesis---that reasoning exposes stable intermediate objects---and the sequence of experiments progressively forced a more utility-relative and dynamical view.
+
 \subsection{Literature review}
 
 \subsubsection{Written reasoning and action traces}
@@ -24,9 +26,13 @@ Prior work thus finds useful tokens, stages, circuits, and latent states, but ea
 \FloatBarrier
 \subsection{Trajectory pipeline and first hypotheses}
 
-Our initial hypothesis was that a long chain of thought might follow a \emph{solution object}, composed of compact internal updates corresponding to meaningful steps of the reasoning. If such objects existed naturally, several things should happen at roughly the same places in the trace. A meaningful text boundary should coincide with a localized latent change; equivalent computations should permit causal transfer; similar operations should have similar representations; and those units should help predict whether the solution is correct.
+\textbf{Hypothesis.} Our initial hypothesis was that a long chain of thought might follow a \emph{solution object}, composed of compact internal updates corresponding to meaningful steps of the reasoning. If such objects existed naturally, several things should happen at roughly the same places in the trace. A meaningful text boundary should coincide with a localized latent change; equivalent computations should permit causal transfer; similar operations should have similar representations; and those units should help predict whether the solution is correct.
 
-We thus tried to identify global, defensible, utilty-neutral partitions in CoTs, which would have allowed us to split CoT streams into chunks, which could then have been classified as different types of reasoning operations.
+\textbf{Experiment.} We tested several consequences of that hypothesis on token-resolved arithmetic traces: alignment with textual boundaries, localization around verified symbolic updates, causal portability between equivalent computations, clustering by operation, and prediction of final correctness. The goal was to find a defensible, utility-neutral partition of the chain of thought.
+
+\textbf{Observation.} The tests did not converge on one object. Text boundaries were weak latent boundaries; verified symbolic updates were spread over extended, direction-changing intervals rather than sharp events; causal patches did not give a stable transfer effect; raw geometry grouped operations poorly even when supervised projections could decode them; and sentence-level summaries predicted correctness better than the proposed latent segments.
+
+\textbf{What this ruled out and next question.} This did not show that reasoning traces lack structure. It ruled out the stronger idea that several reasonable notions of structure would naturally select the same units. The next experiment therefore held the candidate boundary budget fixed and changed only the objective used to judge those boundaries.
 
 \begin{figure}[h]
 \centering
@@ -89,13 +95,13 @@ answer.}
 \subsection{No universal partition of the token lattice}
 \label{subsec:objective-relative-partition}
 
-For this comparison, every gap between two generated tokens could be chosen as a boundary. Each trace received the same number of boundaries, based on its number of verified symbolic updates, so one method could not win simply by selecting more points. For each objective, an oracle was allowed to see the true objective scores and choose the best boundaries; random selection was normalized to zero and the oracle to one.
+\textbf{Experiment.} For this comparison, every gap between two generated tokens could be chosen as a boundary. Each trace received the same number of boundaries, based on its number of verified symbolic updates, so one method could not win simply by selecting more points. For each objective, an oracle was allowed to see the true objective scores and choose the best boundaries; random selection was normalized to zero and the oracle to one.
 
 We used four objectives. The first rewards boundaries where the representation moves toward the gold answer; the second rewards completion of a verified symbolic update; the third rewards changes in a held-out correctness probe; and the fourth rewards changes in local PCA geometry, used as a compression-oriented signal. We then asked whether the boundaries that are good for one objective are also good for the others.
 
-They mostly are not. On 310,044 held-out SmolLM3-3B tokens and 61,691 Qwen3-14B tokens, overlap between objective-specific oracle boundaries is low: F1 within four tokens ranges from 0.098 to 0.210 for SmolLM and from 0.130 to 0.294 for Qwen. No single rule performs well on all four objectives: the best worst-objective utility is only 0.020 for SmolLM and 0.080 for Qwen. Sentence boundaries are particularly weak for answer and symbolic-update utility, although raw cosine peaks retain some answer-related signal.
+\textbf{Observation.} They mostly are not. On 310,044 held-out SmolLM3-3B tokens and 61,691 Qwen3-14B tokens, overlap between objective-specific oracle boundaries is low: F1 within four tokens ranges from 0.098 to 0.210 for SmolLM and from 0.130 to 0.294 for Qwen. No single rule performs well on all four objectives: the best worst-objective utility is only 0.020 for SmolLM and 0.080 for Qwen. Sentence boundaries are particularly weak for answer and symbolic-update utility, although raw cosine peaks retain some answer-related signal.
 
-The negative result is not caused by an absence of learnable structure. Supervised detectors recover their own objective's boundaries with held-out ROC--AUC of 0.999/0.984/0.849/0.868 for SmolLM and 0.998/0.992/0.859/0.825 for Qwen (answer, symbolic update, correctness, and compression). In other words, each target leaves a strong enough signal to decode, but the signals select different partitions of the same trace.
+\textbf{Alternative explanation.} The negative result is not caused by an absence of learnable structure. Supervised detectors recover their own objective's boundaries with held-out ROC--AUC of 0.999/0.984/0.849/0.868 for SmolLM and 0.998/0.992/0.859/0.825 for Qwen (answer, symbolic update, correctness, and compression). In other words, each target leaves a strong enough signal to decode, but the signals select different partitions of the same trace.
 
 \begin{figure}[!htbp]
 \centering
@@ -113,25 +119,25 @@ The negative result is not caused by an absence of learnable structure. Supervis
 \label{fig:objective-matrices}
 \end{figure}
 
-Our results thus hinted that useful boundaries do exist, but that they are extremely utility-dependent. This shifted the project from searching for one canonical partition to asking what kind of state is sufficient for a specified future use.
+\textbf{Interpretation and next question.} Useful boundaries do exist, but they are extremely utility-dependent. In the terminology of the introduction, useful information in a trace is therefore not well described by one intrinsic partition. This shifted the project from searching for a canonical decomposition to asking what kind of state is sufficient for a specified future use.
 
 \FloatBarrier
 \subsection{Judged semantic spans}
 
-However, our four objectives were deliberately operational and might simply have missed the semantic steps that a human reader would naturally call reasoning. To test this, a larger model used as an LLM-as-a-judge, in this case Qwen-110B-A25B, labeled 415 overlapping windows from concise correct SmolLM traces with nine edit types: \emph{orient}, \emph{bind variable}, \emph{add relation}, \emph{derive value}, \emph{verify}, \emph{correct error}, \emph{plan}, \emph{extract answer}, and \emph{mixed}. After alignment and edge filtering, the audit retained 1,761 labeled spans over 58 traces, with median length 29 tokens.
-These semantic boundaries are strongly visible in the hidden states. A question-disjoint latent detector reaches AUC 0.982 overall and 0.969 away from sentence endings. However, lexical TF--IDF alone reaches 0.892, showing that much of the type information is also present in the words themselves.
+\textbf{Alternative hypothesis and test.} Our four objectives were deliberately operational and might simply have missed the semantic steps that a human reader would naturally call reasoning. To test this, a larger model used as an LLM-as-a-judge, in this case Qwen-110B-A25B, labeled 415 overlapping windows from concise correct SmolLM traces with nine edit types: \emph{orient}, \emph{bind variable}, \emph{add relation}, \emph{derive value}, \emph{verify}, \emph{correct error}, \emph{plan}, \emph{extract answer}, and \emph{mixed}. After alignment and edge filtering, the audit retained 1,761 labeled spans over 58 traces, with median length 29 tokens.
+\textbf{Observation.} These semantic boundaries are strongly visible in the hidden states. A question-disjoint latent detector reaches AUC 0.982 overall and 0.969 away from sentence endings. However, lexical TF--IDF alone reaches 0.892, showing that much of the type information is also present in the words themselves.
 
-Most importantly, these human-like semantic boundaries still transfer poorly to the four earlier objectives: their utilities are $-0.012/0.043/0.036/0.324$. This result was thus strongly limited, with a readable semantic decomposition being useful, and yet not a unique decomposition privileged by answer formation, symbolic updates, correctness, and compression.
+\textbf{What this ruled out.} Most importantly, these human-like semantic boundaries still transfer poorly to the four earlier objectives: their utilities are $-0.012/0.043/0.036/0.324$. This result was thus strongly limited, with a readable semantic decomposition being useful, and yet not a unique decomposition privileged by answer formation, symbolic updates, correctness, and compression.
 
 \subsection{Exact control: snapshot information is not memory}
 
-So far, the experiments concerned how to partition a trace. A separate question is whether a representation that contains the right information \emph{now} remains useful after the system continues operating. A state can be perfectly decodable at one instant and still be a bad memory if its update rule forgets important information later.
+\textbf{New question.} So far, the experiments concerned how to partition a trace. A separate question is whether a representation that contains the right information \emph{now} remains useful after the system continues operating. A state can be perfectly decodable at one instant and still be a bad memory if its update rule forgets important information later.
 
-To isolate that distinction from language-model noise, we built an exact finite control, in the same fashion as our synthetic finetuning task from \Cref{sec:fineqcomp}. In this task, a controller observes a short history generated from a finite hidden state and must make decisions over a future horizon using one of several memory representations. Because the hidden-state model, memory update, and planner are all explicit, any difference in performance can be attributed to the representation and its update rule rather than to generation or judging errors.
+\textbf{Exact control.} To isolate that distinction from language-model noise, we built an exact finite control, in the same fashion as our synthetic finetuning task from \Cref{sec:fineqcomp}. In this task, a controller observes a short history generated from a finite hidden state and must make decisions over a future horizon using one of several memory representations. Because the hidden-state model, memory update, and planner are all explicit, any difference in performance can be attributed to the representation and its update rule rather than to generation or judging errors.
 
-Across 90 task cells, the full public history and a 12-bit text suffix start with exactly the same support, state mutual information (2.512 bits), and path leakage (1.781 bits). Yet, they never ended up matching in regret: pooled regret with the text suffix is 7.19 times higher. At horizon 32, regret is 2.20 with full history and 30.91 with the suffix. Both representations contained the same initial observations, but the suffix discarded older information as new observations arrive.
+\textbf{Observation.} Across 90 task cells, the full public history and a 12-bit text suffix start with exactly the same support, state mutual information (2.512 bits), and path leakage (1.781 bits). Yet, they never ended up matching in regret: pooled regret with the text suffix is 7.19 times higher. At horizon 32, regret is 2.20 with full history and 30.91 with the suffix. Both representations contained the same initial observations, but the suffix discarded older information as new observations arrive.
 
-A 12-bit explicit field state performed much better: it removed 79.3\% of the regret of having no memory, compared with 93.7\% for full history and 54.8\% for the text suffix. It still failed when the held-out goal required fields that its training objective did not preserve. This highlighted that snapshot information and update closure are separate requirements.
+\textbf{Interpretation.} A 12-bit explicit field state performed much better: it removed 79.3\% of the regret of having no memory, compared with 93.7\% for full history and 54.8\% for the text suffix. It still failed when the held-out goal required fields that its training objective did not preserve. This highlighted that snapshot information and update closure are separate requirements.
 
 \begin{figure}[!htbp]
 \centering
@@ -140,18 +146,18 @@ A 12-bit explicit field state performed much better: it removed 79.3\% of the re
 \label{fig:closed-loop-regret}
 \end{figure}
 
-This control clarified what a reusable state must do: it must summarize the current history well enough for the task, \textbf{and} it must remain sufficient after repeated updates.
+\textbf{Next question.} This control clarified what a reusable state must do: it must summarize the current history well enough for the task, \textbf{and} it must remain sufficient after repeated updates. We then returned to language models to test whether such a state already exists natively or has to be imposed through an explicit interface.
 \FloatBarrier
 \subsection{Native language-model state and explicit handoff}
 \label{subsec:native-state-handoff}
 
-We designed a synthetic addition task where the necessary intermediate state is known exactly. A short program leads to one of eight possible three-bit states, and a separate pointer table maps that state to the final answer. This lets us test four abilities separately: read a state, update it, infer the state reached by a history, and use that inferred state in a final lookup.
+\textbf{Hypothesis and test.} If a pretrained model naturally exposes a reusable intermediate state, it should be able to infer that state and then use it in a downstream operation. We designed a synthetic addition task where the necessary intermediate state is known exactly. A short program leads to one of eight possible three-bit states, and a separate pointer table maps that state to the final answer. This lets us test four abilities separately: read a state, update it, infer the state reached by a history, and use that inferred state in a final lookup.
 
-Frozen Qwen2.5-32B can read a supplied state and apply a local update perfectly. At horizon two it also infers the endpoint of the history with 76.98\% accuracy. But when asked to infer that endpoint and immediately use it in the final lookup within one prompt, accuracy falls to 13.44\%, close to the eight-state chance level.
+\textbf{Observation.} Frozen Qwen2.5-32B can read a supplied state and apply a local update perfectly. At horizon two it also infers the endpoint of the history with 76.98\% accuracy. But when asked to infer that endpoint and immediately use it in the final lookup within one prompt, accuracy falls to 13.44\%, close to the eight-state chance level.
 
-If we stop after the model predicts the endpoint, delete the original history, and pass only that predicted state to a fresh model call, final accuracy returns to 76.98\%. Passing the correct endpoint instead reaches 100\%, as does explicit step-by-step decimal execution. The model therefore contains enough information to infer the intermediate state, but the one-pass computation does not reliably route that state into the next operation.
+\textbf{Causal control.} If we stop after the model predicts the endpoint, delete the original history, and pass only that predicted state to a fresh model call, final accuracy returns to 76.98\%. Passing the correct endpoint instead reaches 100\%, as does explicit step-by-step decimal execution. The model therefore contains enough information to infer the intermediate state, but the one-pass computation does not reliably route that state into the next operation.
 
-Hidden-state probes also retain information about the path used to reach the endpoint, and the late-layer subspace we tested does not outperform a random subspace control. We therefore do not claim that the frozen model exposes one clean native code that can simply be patched between computations.
+\textbf{What this ruled out and next question.} Hidden-state probes also retain information about the path used to reach the endpoint, and the late-layer subspace we tested does not outperform a random subspace control. We therefore do not claim that the frozen model exposes one clean native code that can simply be patched between computations. Instead of continuing to search for an assumed native interface, the next step was to supply one explicitly and test what properties make it reusable.
 
 \begin{figure}[!htbp]
 \centering
@@ -173,13 +179,13 @@ Hidden-state probes also retain information about the path used to reach the end
 \subsection{Rate, shared meaning, and closure}
 \label{subsec:state-closure}
 
-Because of this result, instead of continuing to search for an assumed native interface, we supplied an explicit one and asked what properties were necessary for it to work reliably.
+\textbf{New hypothesis.} A reusable state interface should need at least three things: enough capacity for the task-relevant state, one stable meaning for each code, and an update rule accurate enough to remain closed under repeated self-use. We supplied such an explicit interface and tested these requirements separately.
 
-To make the state space less trivial, we moved to a finite proof task. The state was in this case a four-bit fact ledger indicating which of four facts are currently true, giving 16 possible states. Horn-style implication rules updated the ledger one deduction at a time. At each step, the previous rules are discarded, and only the current state code is passed to the next model call, so the experiment would only be succesful if the code itself carried the needed state.
+\textbf{Experiment.} To make the state space less trivial, we moved to a finite proof task. The state was in this case a four-bit fact ledger indicating which of four facts are currently true, giving 16 possible states. Horn-style implication rules updated the ledger one deduction at a time. At each step, the previous rules are discarded, and only the current state code is passed to the next model call, so the experiment would only be succesful if the code itself carried the needed state.
 
-We compared four code designs with equal training data and compute. A lossy three-bit code must merge some of the 16 states. A canonical code gives every state one stable name. A five-bit padded code adds unused capacity while keeping one name per state. Finally, a five-bit path-aliased code deliberately gives the same semantic state two possible names depending on how that state was reached. The last pair isolates extra capacity from path-dependent naming.
+\textbf{Controls.} We compared four code designs with equal training data and compute. A lossy three-bit code must merge some of the 16 states. A canonical code gives every state one stable name. A five-bit padded code adds unused capacity while keeping one name per state. Finally, a five-bit path-aliased code deliberately gives the same semantic state two possible names depending on how that state was reached. The last pair isolates extra capacity from path-dependent naming.
 
-Canonical and padded codes recover all 16 states in all three seeds and remain exact through the tested horizon of 256. Mean final accuracy is 97.22\% for the canonical interface, compared with 72.22\% for one-pass reasoning, a paired gain of 25 points with context-bootstrap interval $[12.50,38.89]$. The three-bit code has one bit of unavoidable residual state uncertainty and never recovers the exact state. Extra unused capacity does not hurt the padded code, but path-dependent naming does: after three active deductions, the aliased code has only 30--40\% exact state, versus 100\% for the equally large padded code.
+\textbf{Observation.} Canonical and padded codes recover all 16 states in all three seeds and remain exact through the tested horizon of 256. Mean final accuracy is 97.22\% for the canonical interface, compared with 72.22\% for one-pass reasoning, a paired gain of 25 points with context-bootstrap interval $[12.50,38.89]$. The three-bit code has one bit of unavoidable residual state uncertainty and never recovers the exact state. Extra unused capacity does not hurt the padded code, but path-dependent naming does: after three active deductions, the aliased code has only 30--40\% exact state, versus 100\% for the equally large padded code.
 
 \begin{figure}[H]
 \centering
@@ -188,7 +194,7 @@ Canonical and padded codes recover all 16 states in all three seeds and remain e
 \label{fig:rate-sufficiency}
 \end{figure}
 
-As the 5-bit bar of \Cref{fig:rate-sufficiency} shows, capacity is not automatically better if the extra bits preserve irrelevant history. The padded code has the same size without this ambiguity and stays stable; the aliased code carries path information and loses closure.
+\textbf{Explanation ruled out.} As the 5-bit bar of \Cref{fig:rate-sufficiency} shows, capacity is not automatically better if the extra bits preserve irrelevant history. The padded code has the same size without this ambiguity and stays stable; the aliased code carries path information and loses closure.
 
 
 \begin{figure}[H]
@@ -198,7 +204,7 @@ As the 5-bit bar of \Cref{fig:rate-sufficiency} shows, capacity is not automatic
 \label{fig:depth-length}
 \end{figure}
 
-After this, the proof task still had a very regular transition rule, so we finally moved to mixed register programs containing addition, XOR, swap, and conditional updates. Here, the model applies a single update to its current supplied state correctly about 89\% of the time. That sounds strong locally, but after roughly 31 self-fed updates the complete horizon-32 accuracy drops to only 7.92\%, barely above the 6.25\% chance rate; one-pass reasoning reaches 5.83\%. This pattern was not model-dependent, and adding a fifth code bit did not repair it.
+\textbf{Stress test.} The proof task still had a very regular transition rule, so we finally moved to mixed register programs containing addition, XOR, swap, and conditional updates. Here, the model applies a single update to its current supplied state correctly about 89\% of the time. That sounds strong locally, but after roughly 31 self-fed updates the complete horizon-32 accuracy drops to only 7.92\%, barely above the 6.25\% chance rate; one-pass reasoning reaches 5.83\%. This pattern was not model-dependent, and adding a fifth code bit did not repair it.
 
 \begin{figure}[!htbp]
 \centering
@@ -207,11 +213,11 @@ After this, the proof task still had a very regular transition rule, so we final
 \label{fig:local-global}
 \end{figure}
 
-This failure sets the present limit of the interface approach, and more generally of the forced causal state usage. A transition function that is 89\% correct in one step is not reliable enough for dozens of recursive uses, a number of steps RLMs can easily reach when making advanced deductions. Small semantic errors compound until the state is nearly useless. Long-horizon reliability therefore has to be measured under self-conditioned use, not inferred from gold-input one-step accuracy.
+\textbf{Limit and next question.} This failure sets the present limit of the interface approach, and more generally of the forced causal state usage. A transition function that is 89\% correct in one step is not reliable enough for dozens of recursive uses, a number of steps RLMs can easily reach when making advanced deductions. Small semantic errors compound until the state is nearly useless. Long-horizon reliability therefore has to be measured under self-conditioned use, not inferred from gold-input one-step accuracy.
 
 \FloatBarrier
 \subsection{Takeaways}
 
-The reasoning experiments progressively weakened the original idea of a natural, canonical intermediate state. We found strong latent structure, but different objectives select different boundaries. We found states that are easy to decode, but that does not mean the model will route them into the next computation. We built explicit compact interfaces that work under controlled conditions, but only when they have enough capacity, one stable meaning per state, and sufficiently accurate self-updates.
+Seen through the common lens of the report, the reasoning experiments progressively weakened the original idea of a natural, canonical intermediate state. We found strong latent structure, but different objectives select different boundaries. We found states that are easy to decode, but that does not mean the model will route them into the next computation. We built explicit compact interfaces that work under controlled conditions, but only when they have enough capacity, one stable meaning per state, and sufficiently accurate self-updates.
 
 More recently, these negative results concerning a discrete, ordinate structure to CoT however oriented us on the path of a more general, continuous view of reasoning, which Paul found a good intuition for that could apply to our initial topic. This is what we're currently working on, and the next chapter will present my ongoing attempt at unifying the two parts of the internship.
