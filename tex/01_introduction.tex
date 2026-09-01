@@ -4,7 +4,7 @@
 \subsection{Internship context}
 
 
-The internship is taking place from April to September 2026 under the Université Paris Dauphine–PSL. I'm working in practice from the PariSantéCampus offices, and interacting daily with other M2 students, PhD students, and researchers. Under my role of M2 intern, I am part of \emph{MILES (Machine Intelligence and Learning Systems)}, a research group within \emph{LAMSADE}, the \emph{Laboratoire d’Analyse et de Modélisation de Systèmes d’Aide à la Décision}, a joint research laboratory of Université Paris Dauphine–PSL and the CNRS.
+The internship is taking place from April to September 2026 at Université Paris Dauphine–PSL. I work primarily from the PariSantéCampus offices, and interact daily with other M2 students, PhD students, and researchers. As an M2 intern, I am part of \emph{MILES (Machine Intelligence and Learning Systems)}, a research group within \emph{LAMSADE}, the \emph{Laboratoire d’Analyse et de Modélisation de Systèmes d’Aide à la Décision}, a joint research laboratory of Université Paris Dauphine–PSL and the CNRS.
 
 LAMSADE is Dauphine’s main computer science and decision-science research laboratory, spanning decision support, optimization, algorithms, data science, and artificial intelligence, while MILES focuses more specifically on the theoretical and algorithmic foundations of machine learning and artificial intelligence.
 
@@ -45,14 +45,14 @@ This question rests on a view that connects the two tracks: ``useful information
 
 \subsection{Structure of the report}
 
-This report's chapters follows a chronological order with respect to which research directions were tackled first. Given that the goal of this report is as much to highlight our researching process as to explain the results this process yielded, negative results remain in it, as they often determined the next experiment to be ran, if not a high-level course adjustment. We begin by with a brief exploration of the technical background to the research we led, including an overview of the relevant concepts. Then, before each of the two main sections (respectively information-theoretic limits of finetuning and reasoning trajectories), we give an overview of the literature, before explaining how they contributed to motivating our initial research questions.
+The chapters of this report follow a chronological order with respect to which research directions were tackled first. Given that the goal of this report is as much to highlight our research process as to explain the results this process yielded, negative results remain in it, as they often determined the next experiment to be run, if not a high-level course adjustment. We begin with a brief exploration of the technical background to the research we led, including an overview of the relevant concepts. Then, before each of the two main sections (respectively information-theoretic limits of finetuning and reasoning trajectories), we give an overview of the literature, before explaining how they contributed to motivating our initial research questions.
 
 \subsection{Research questions}
 
 \begin{enumerate}[leftmargin=*]
-    \item How should the rate of a fine-tuning update be defined when the receiver already has the base model, adapter layout, and decoder; from a classical compression point of view, it can be seen as ?
+    \item How should the rate of a fine-tuning update be defined when the receiver already has the base model, adapter layout, and decoder?
     \item How much serialized update information preserves learned behavior, and which data or model properties predict that threshold, especially in the context of LoRA finetuning?
-    \item In the context of CoT-generating RLMS, do reasoning trajectories admit a canonical latent-space based decomposition? If not, how variable are the decompositions across different utilities?
+    \item In the context of CoT-generating RLMs, do reasoning trajectories admit a canonical latent-space-based decomposition? If not, how variable are the decompositions across different utilities?
     \item When can an explicit state code support RLM causal handoff and reliable recursive use?
 \end{enumerate}
 

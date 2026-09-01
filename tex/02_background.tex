@@ -115,7 +115,7 @@ Minimum Description Length (MDL) uses description length as a way of expressing 
 
 \subsection{Internal representations, probes, and causal interventions}
 
-As previously introduced, by "hidden representations", we describe the vectorial state of a transfomer pass after any one of its Attention+MLP layers. Hidden representations can contain information that is not explicit in the generated text. A common way to test this is a \emph{probe}: a simple supervised model, often linear, is trained to predict a property of interest from hidden activations. High held-out probe performance shows that the property is statistically accessible from the representation under the chosen decoder.
+As previously introduced, by "hidden representations", we describe the vectorial state of a transformer pass after any one of its Attention+MLP layers. Hidden representations can contain information that is not explicit in the generated text. A common way to test this is a \emph{probe}: a simple supervised model, often linear, is trained to predict a property of interest from hidden activations. High held-out probe performance shows that the property is statistically accessible from the representation under the chosen decoder.
 
 Geometric analyses ask related but unsupervised questions. Principal Component Analysis (PCA) can identify high-variance directions; cosine similarity measures changes in direction; distances or local statistics can reveal how a trajectory evolves through representation space. Such measurements describe organization in the representation but do not by themselves show that the model uses that organization causally.
 
