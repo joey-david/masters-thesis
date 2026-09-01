@@ -1,16 +1,16 @@
 \contentsline {figure}{\numberline {1}{\ignorespaces Research sequence, April--August 2026.}}{3}{figure.caption.3}%
 \contentsline {figure}{\numberline {2}{\ignorespaces Low-rank adaptation of a frozen weight matrix.}}{6}{figure.caption.4}%
 \contentsline {figure}{\numberline {3}{\ignorespaces Adaptive MDL allocation and the RMSE counterexample.}}{11}{figure.caption.5}%
-\contentsline {figure}{\numberline {4}{\ignorespaces Compute-matched distinct-example rate--retention curves.}}{12}{figure.caption.7}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Compute-matched distinct-example rate--retention curves.}}{11}{figure.caption.7}%
 \contentsline {figure}{\numberline {5}{\ignorespaces Content diversity and distinct-example controls.}}{12}{figure.caption.8}%
 \contentsline {figure}{\numberline {6}{\ignorespaces Known source information control.}}{13}{figure.caption.9}%
 \contentsline {figure}{\numberline {7}{\ignorespaces Content diversity moves adapter rate on XBRL but not reliably on SQL.}}{14}{figure.caption.12}%
-\contentsline {figure}{\numberline {8}{\ignorespaces Rank scaling and layer-band allocation controls.}}{16}{figure.caption.14}%
-\contentsline {figure}{\numberline {9}{\ignorespaces Idealized solution object as a DAG.}}{18}{figure.caption.15}%
-\contentsline {figure}{\numberline {10}{\ignorespaces Objective-relative partition utility and regret.}}{19}{figure.caption.16}%
-\contentsline {figure}{\numberline {11}{\ignorespaces Exact closed-loop regret over horizon.}}{20}{figure.caption.17}%
-\contentsline {figure}{\numberline {12}{\ignorespaces Native state factorization and explicit handoff.}}{21}{figure.caption.18}%
-\contentsline {figure}{\numberline {13}{\ignorespaces Full-support proof-state rate control.}}{21}{figure.caption.19}%
-\contentsline {figure}{\numberline {14}{\ignorespaces Surface length, active depth, and behavior.}}{22}{figure.caption.20}%
-\contentsline {figure}{\numberline {15}{\ignorespaces Local versus global register reliability.}}{22}{figure.caption.21}%
-\contentsline {figure}{\numberline {16}{\ignorespaces Rate limits for reasoning and answer supervision.}}{23}{figure.caption.22}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Idealized solution object as a DAG.}}{17}{figure.caption.14}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Objective-relative partition utility and regret.}}{18}{figure.caption.15}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Exact closed-loop regret over horizon.}}{19}{figure.caption.17}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Native state factorization and explicit handoff.}}{20}{figure.caption.19}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Full-support proof-state rate control.}}{21}{figure.caption.20}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Local versus global register reliability.}}{22}{figure.caption.22}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Rate limits for reasoning and answer supervision.}}{23}{figure.caption.23}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Rank scaling and layer-band allocation controls.}}{26}{figure.caption.28}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Surface length, active depth, and behavior.}}{27}{figure.caption.29}%

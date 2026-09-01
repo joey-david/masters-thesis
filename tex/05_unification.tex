@@ -1,9 +1,9 @@
-\section{Information limits in fine-tuning for reasoning}
+\section{Synthesis and perspectives}
 \label{sec:unification}
 
-\subsection{A measured split between reasoning and answer updates}
+\subsection{A first bridge: reasoning and answer updates}
 
-In our work towards the unification of the two tracks taken during our work so far, we started to study the relative importance and informational weight of the reasoning chain itself versus the final answer. We fine-tuned rank-16 all-linear LoRA adapters on MetaMathQA with two frozen NF4 backbones, Mistral-7B and Qwen2.5-7B. For each model, we trained on the full response, the reasoning span only, or the answer span only.
+To begin unifying the two tracks, we asked whether the reasoning chain and final answer require different amounts of update information. To test this hypothesis, we fine-tuned rank-16 all-linear LoRA adapters on MetaMathQA with two frozen NF4 backbones, Mistral-7B and Qwen2.5-7B. For each model, we trained on the full response, the reasoning span only, or the answer span only.
 
 After training, each fixed adapter was compressed through the same dense codec ladder used in \Cref{sec:fineqcomp}. We measured the exact serialized file rate in bits per LoRA value and the signed held-out bits per token saved against the frozen model, separately for the reasoning and answer spans. For a frozen model $M$ and span utility $U$, we write
 \begin{equation}
@@ -13,7 +13,7 @@ After training, each fixed adapter was compressed through the same dense codec l
 \end{equation}
 where $W_{M,U}$ is the held-out gain on that span.
 
-On the Mistral model, full-response and reasoning-only supervision save respectively 0.567 and 0.568 bits per reasoning token; on Qwen, they save 0.101 and 0.100. Adding answer supervision therefore seems to have only a negligible effect on the bit rate.
+The initial observation in \Cref{fig:cot-finetuning-limits} is that, on the Mistral model, full-response and reasoning-only supervision save respectively 0.567 and 0.568 bits per reasoning token; on Qwen, they save 0.101 and 0.100. Adding answer supervision therefore has almost no effect on the gain over reasoning tokens. The compression rates, however, do not follow one ordering across models. At 90\% retention, reasoning and answer require respectively 1.070 and 0.578 bits per value on Mistral, but 0.471 and 0.575 on Qwen. The claim that reasoning is more expensive than the answer therefore holds for Mistral, not for reasoning in general.
 
 
 \begin{figure}[H]
@@ -23,24 +23,24 @@ On the Mistral model, full-response and reasoning-only supervision save respecti
 \label{fig:cot-finetuning-limits}
 \end{figure}
 
-\subsection{Initial analysis}
+\subsection{What the two tracks establish together}
 
 This gives a completed reasoning-specific instance of the receiver dependence found in \Cref{sec:fineqcomp}. A training corpus does not have one adapter rate by itself. The required rate depends on the frozen model and on which learned behavior must survive compression. It also matches the objective-relative result in \Cref{sec:reasoning}: answer formation, symbolic updates, correctness, and continuation need not select the same representation. At training time, the carrier is a serialized adapter; at inference time, it is a trace partition or state code. In both cases, nominal size alone does not identify the information that supports a stated use.
 
 So far, we thus have evidence for two utility-relative channels. In the training-time channel, the frozen model receives a compressed update and must retain a chosen behavior. In the inference-time channel, a later computation receives a compressed history or state and must retain a chosen use. The experiments show that both channels must be judged by what the receiver can still do.
 
-\subsection{Limits of the current bridge}
+\subsection{What remains unresolved}
 
 At the time of writing this, I am still in the midst of analyzing the results of the experiment above, which obviously remain preliminary. It uses one training corpus, two base models, one lexical split point, and far fewer held-out answer tokens than reasoning tokens. The experiment measures supervised next-token gain and GSM8K accuracy, so it does not establish how RLVR allocates update rate when only an outcome reward is supplied. Nor does it yet show whether a compressed adapter loses internal reasoning structure before or after it loses answer accuracy.
 
 More broadly, so far, the two halves of the report still meet at the level of a common question rather than one predictive law. Chapter~\ref{sec:fineqcomp} measures how many adapter bits preserve a behavior, while Chapter~\ref{sec:reasoning} shows that different future uses select different intermediate structure and that recursive use adds a closure requirement. We have not yet shown that a quantity measured before fine-tuning predicts a reasoning-specific rate, or that changing adapter rate predictably changes the internal state properties measured in the reasoning experiments.
 
-\subsection{Promising paths toward a unified result}
+\subsection{How to test the bridge}
 
 Intuitively, the highest-upside next step is to make the two tracks predict each other. The correction-spectrum measure from \Cref{sec:fineqcomp} can be computed on the frozen model separately for reasoning and answer tokens before training. If those utility-specific spectra predict the later $R^{\star}_{M,U}$ values across new models and datasets, the current model-relative account would become a predictive statement about which parts of a reasoning task are expensive to write.
 
 Another path forward would be to compress a fixed reasoning adapter, and follow several properties along the same rate ladder. We could measure its objective-specific boundaries, operation decoding, trajectory geometry, and explicit state handoff tests from \Cref{sec:reasoning}. If these properties fail at reproducibly different rates, we would have direct evidence that even within one trained model there is no single behavior-independent ``amount of reasoning'' stored in the update. If they fail together, that would instead identify a much stronger common bottleneck.
 
-There remains a lot of paths forward, and as for research in general, my success will likely depend on my capacity to ask the right question and discern between the most promising hypothesises.
+These two tests give us a concrete way to choose between the remaining hypotheses, rather than treating the shared interpretation as a result in itself.
 
 \FloatBarrier

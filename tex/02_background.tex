@@ -35,7 +35,7 @@ Low-Rank Adaptation (LoRA) is a widely used example \parencite{hu2022lora}. For 
 \end{equation}
 where $A\in\mathbb{R}^{r\times d_{\mathrm{in}}}$, $B\in\mathbb{R}^{d_{\mathrm{out}}\times r}$, and $r$ is much smaller than the dimensions of $W$. LoRA modules can be inserted into several projections of each transformer block while the underlying pretrained weights remain unchanged.
 
-This gives a useful separation between a \emph{base model}, which is shared, and a comparatively small learned \emph{adapter}. Rank controls the dimension of the update parameterization, but it should not be confused with a number of information bits: the learned matrix entries still need numerical values, and many different numerical representations are possible at the same rank.
+This gives a useful separation between a \emph{base model}, which is shared, and a comparatively small learned \emph{adapter}, as illustrated in \Cref{fig:lora-channel}. Rank controls the dimension of the update parameterization, but it should not be confused with a number of information bits: the learned matrix entries still need numerical values, and many different numerical representations are possible at the same rank.
 
 \begin{figure}[htbp]
 \centering

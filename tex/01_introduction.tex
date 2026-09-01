@@ -4,13 +4,15 @@
 \subsection{Internship context}
 
 
-The internship is taking place from April to September 2026 under the Université Paris Dauphine–PSL. I'm working in practice from the PariSantéCampus offices, and interacting daily with other M2 students, PhD students, and researchers. Under my role of M2 intern, I am part of \emph{MILeS (Machine Intelligence and Learning Systems)}, a research group within \emph{LAMSADE}, the \emph{Laboratoire d’Analyse et de Modélisation de Systèmes d’Aide à la Décision}, a joint research laboratory of Université Paris Dauphine–PSL and the CNRS.
+The internship is taking place from April to September 2026 under the Université Paris Dauphine–PSL. I'm working in practice from the PariSantéCampus offices, and interacting daily with other M2 students, PhD students, and researchers. Under my role of M2 intern, I am part of \emph{MILES (Machine Intelligence and Learning Systems)}, a research group within \emph{LAMSADE}, the \emph{Laboratoire d’Analyse et de Modélisation de Systèmes d’Aide à la Décision}, a joint research laboratory of Université Paris Dauphine–PSL and the CNRS.
 
-LAMSADE is Dauphine’s main computer science and decision-science research laboratory, spanning decision support, optimization, algorithms, data science, and artificial intelligence, while MILeS focuses more specifically on the theoretical and algorithmic foundations of machine learning and artificial intelligence.
+LAMSADE is Dauphine’s main computer science and decision-science research laboratory, spanning decision support, optimization, algorithms, data science, and artificial intelligence, while MILES focuses more specifically on the theoretical and algorithmic foundations of machine learning and artificial intelligence.
 
 \subsection{Research trajectory}
 
-The internship began with an information-theoretic study of fine-tuning, where early capacity and dataset-compressibility experiments exposed the need for an operational definition of update rate. While doing the literature review, I had some interesting parallel ideas which triggered an investigation of reasoning trajectories, testing whether language models expose compact, reusable intermediate states, which increasingly showed that useful state descriptions depend on the downstream objective. These results motivated more causal state-interface experiments and, in parallel, a return to fine-tuning with exact serialized-rate measurements. The two lines eventually converged on a common question: how much information must a representation preserve, relative to a particular receiver and utility, for learned behavior to survive? At the time of writing, this question is still ongoing with some promising results, and we're looking to apply it to reasoning to use results from both of the tracks we've pursued so far.
+The internship began with an information-theoretic study of fine-tuning, where early capacity and dataset-compressibility experiments exposed the need for an operational definition of update rate. While doing the literature review, I had some interesting parallel ideas which triggered an investigation of reasoning trajectories, testing whether language models expose compact, reusable intermediate states, which increasingly showed that useful state descriptions depend on the downstream objective. These results motivated more causal state-interface experiments and, in parallel, a return to fine-tuning with exact serialized-rate measurements. The two lines eventually converged on a common question: how much information must a representation preserve, relative to a particular receiver and utility, for learned behavior to survive? At the time of writing, this question is still ongoing with some promising results, and we're looking to apply it to reasoning to use results from both of the tracks we've pursued so far. \Cref{fig:timeline} summarizes this sequence of questions and experiments.
+
+This question rests on a view that connects the two tracks: ``useful information'' is not an intrinsic property of a dataset, a fine-tuning adapter, or a reasoning trace. It is defined by a usage. Its amount depends on what the receiving model already knows, which behavior or objective must be preserved, and, for a state that will be reused, how that state is updated; from a classical compression point of view, it can be seen as a conditional description length: the information that remains necessary once the receiver and intended use are given as side information. The same artifact can therefore carry different amounts of useful information for different receivers or tasks. This view provides the common frame for the chronological experiments that follow: each experiment asks which information a specified receiver needs for a specified use, and which simpler account of that need the result rules out.
 
 \begin{figure}[t]
 \centering
@@ -48,7 +50,7 @@ This report's chapters follows a chronological order with respect to which resea
 \subsection{Research questions}
 
 \begin{enumerate}[leftmargin=*]
-    \item How should the rate of a fine-tuning update be defined when the receiver already has the base model, adapter layout, and decoder?
+    \item How should the rate of a fine-tuning update be defined when the receiver already has the base model, adapter layout, and decoder; from a classical compression point of view, it can be seen as ?
     \item How much serialized update information preserves learned behavior, and which data or model properties predict that threshold, especially in the context of LoRA finetuning?
     \item In the context of CoT-generating RLMS, do reasoning trajectories admit a canonical latent-space based decomposition? If not, how variable are the decompositions across different utilities?
     \item When can an explicit state code support RLM causal handoff and reliable recursive use?
@@ -85,4 +87,3 @@ Our main contributions include:
     (\Cref{subsec:state-closure})
 
 \end{enumerate}
-

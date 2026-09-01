@@ -1,0 +1,92 @@
+\section{Additional experimental details and controls}
+\label{sec:appendix-controls}
+
+\subsection{Early adapter-factor asymmetry pilot}
+
+In an early pilot, $A$-only (with $A$ being the down-projecting matrix of the LoRA adapter) LoRA training stayed near baseline, while $B$-only recovered much of full-LoRA performance in the tested setup. This functional asymmetry warned against treating equally sized parts of the adapter as equally valuable.
+
+\subsection{Prequential-code implementation}
+\label{app:prequential-code}
+
+The conditional prequential code trains the model on earlier blocks and uses its log loss to encode later ones. A uniform fallback prevents a confidently wrong model from assigning an arbitrarily large code length, and a switch-code correction lets an entire block fall back to the shared base model when that is cheaper.
+
+\subsection{Codec ladder}
+\label{app:codec-ladder}
+
+At one bit and above, each LoRA matrix is quantized row by row. At one bit, a value is represented only by its sign and its row scale, so it reconstructs to $+\operatorname{mean}|w|$ or $-\operatorname{mean}|w|$. Higher rates use more quantization levels. Below one bit per value, we cannot give every value even one bit, so we instead keep only a fraction of LoRA rank directions, always keeping or dropping the corresponding directions in $A$ and $B$ together.
+
+\subsection{Exact diversity cells}
+
+\begin{table}[htb]
+\centering\small
+\begin{tabular}{rrrrr}
+\toprule
+Distinct examples & Epochs & $\Rstar(.90)$ & Seed range & Raw GSM8K EM \\
+\midrule
+2,000 & 16 & 0.645 & 0.611--0.700 & 0.546 \\
+4,000 & 8 & 0.740 & 0.712--0.787 & 0.546 \\
+8,000 & 4 & 0.709 & 0.671--0.747 & 0.618 \\
+16,000 & 2 & 0.832 & 0.773--0.908 & 0.676 \\
+32,000 & 1 & 1.002 & 0.983--1.015 & 0.694 \\
+\bottomrule
+\end{tabular}
+\caption{$\Rstar(.90)$ in serialized bits per raw adapter value, with optimizer steps and training-example presentations fixed.}
+\label{tab:distinct-rate}
+\end{table}
+
+\begin{table}[htb]
+\centering\small
+\begin{tabular}{llrrr}
+\toprule
+Task & Model & Groups & Mean $\Rstar$, low $\rightarrow$ high & Positive seed pairs \\
+\midrule
+SQL & Mistral-7B & 10 $\rightarrow$ 100 & 0.375 $\rightarrow$ 0.406 & 2/3 \\
+SQL & Qwen2.5-7B & 10 $\rightarrow$ 100 & 0.584 $\rightarrow$ 0.600 & 2/3 \\
+XBRL & Mistral-7B & 10 $\rightarrow$ 30 & 0.260 $\rightarrow$ 0.318 & 3/3 \\
+XBRL & Qwen2.5-7B & 10 $\rightarrow$ 30 & 0.397 $\rightarrow$ 0.469 & 3/3 \\
+\bottomrule
+\end{tabular}
+\caption{Fixed-example content-diversity replication. All 36 likelihood-based rate curves bracket $\Rstar(.90)$.}
+\label{tab:diversity-replication}
+\end{table}
+
+\subsection{Adapter carrier and location controls}
+\label{app:carrier-location}
+
+We tested whether the adapter architecture itself imposes a large cost independent of task content. As \Cref{fig:rank-location} shows, quadrupling LoRA rank from 16 to 64 increases the whole-file $\Rstar$ by roughly threefold in two matched conditions, suggesting that a substantial part of the message scales with the carrier. We also asked whether broad layer location could guide bit allocation. At matched 0.5- and 1.0-bit budgets, uniform precision beats starving the early, middle, or late third of the network; starving late layers hurts most. Weight-update RMS is almost flat across depth, while the induced representation shift grows toward the final layers.
+
+\begin{figure}[htb]
+\centering
+
+\begin{subfigure}[t]{.50\linewidth}
+\centering
+\includegraphics[width=\linewidth]{fineqcomp/plots/rank_scaling.pdf}
+\caption{Whole-file threshold at ranks 16 and 64.}
+\end{subfigure}
+
+\vspace{0.8em}
+
+\begin{subfigure}[t]{1\linewidth}
+\centering
+\includegraphics[width=\linewidth]{fineqcomp/plots/where_the_bits_live.pdf}
+\caption{Layer-band allocation and depth-wise effect.}
+\end{subfigure}
+
+\caption[Rank scaling and layer-band allocation controls.]
+{Container and location controls. Rank scaling is closer to proportional growth than to a fixed task message. At matched total rate, uniform precision beats starving any third of the network; late-layer starvation is most damaging even though update RMS is almost flat across bands.}
+\label{fig:rank-location}
+\end{figure}
+
+The rank comparison changes the carrier while keeping the task fixed, ruling out the idea that $\Rstar$ measures only a task message independent of adapter size. The matched-rate layer controls hold the total budget fixed and show that removing the same number of bits from different depth bands has different effects; the flat update RMS therefore cannot explain the late-layer sensitivity. These controls do not yet rule out a finer allocation within each band.
+
+\subsection{Surface length and active update depth}
+\label{app:depth-length}
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=.98\linewidth]{reasoning/plots/depth_length.pdf}
+\caption[Surface length, active depth, and behavior.]{Length, active depth, and behavior in the canonical causal-state suite. Padding the rule stream at fixed active depth leaves exact state unchanged, whereas increasing state-changing deductions damages the aliased code. Canonical final behavior remains high through the padded horizons.}
+\label{fig:depth-length}
+\end{figure}
+
+As \Cref{fig:depth-length} shows, padding the rule stream at fixed active depth leaves accuracy unchanged, ruling out surface or context length alone. Increasing the number of state-changing deductions instead isolates active update depth.
