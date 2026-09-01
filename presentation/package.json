@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "python make_assets.py && node deck.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
