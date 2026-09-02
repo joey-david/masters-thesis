@@ -1,12 +1,13 @@
 # Thesis defense presentation
 
-18-slide deck for a ~20–25 minute presentation of the master's thesis.
+25-slide deck for a **20–25 minute** defense.
 
-## Files
+## Design
 
-- `deck.js` — PptxGenJS source
-- `make_assets.py` — regenerates the simplified result plots from thesis values
-- `speaker_notes.md` — timing and oral cues
+- Multiple slide archetypes: dark section dividers, equation slides, diagrams, hypothesis maps, result plots, synthesis slides.
+- Part I adds explicit LoRA, rate–distortion, operational-rate, and correction-geometry theory.
+- Result slides are separated by bridge slides that state the live hypothesis / confound before the next experiment.
+- Minimal prose on-slide; equations only when they advance the argument.
 
 ## Build
 
@@ -15,8 +16,8 @@ python make_assets.py
 node deck.js
 ```
 
-This produces `thesis_defense.pptx` and an `assets/` directory locally.
+Output: `thesis_defense.pptx`
 
-The deck deliberately uses simplified presentation plots rather than copying dense paper figures. All numeric charts use values reported in the thesis; schematic figures are unlabeled by numeric axes.
+Dependencies: Python + matplotlib/numpy; Node + `pptxgenjs`.
 
-The final deck was rendered and visually reviewed slide-by-slide over three passes before this source was committed.
+See `speaker_notes.md` for the ~21–23 minute speaking plan.
