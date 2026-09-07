@@ -1,0 +1,210 @@
+[
+  {
+    "index": 1,
+    "title": "",
+    "section": "MASTER’S THESIS · IASD · PSL · 2026",
+    "seconds": 25,
+    "notes": "My internship at MILES, LAMSADE, asks how much information a language model needs to acquire or preserve for a behavior to survive. I studied this in two settings: small parameter updates during fine-tuning, and intermediate states during reasoning. I will first set up the LLM-specific objects, then present the strongest evidence and what it leaves open.",
+    "source": "Report title page and §1.1."
+  },
+  {
+    "index": 2,
+    "title": "How much information must survive?",
+    "section": "RESEARCH QUESTION",
+    "seconds": 30,
+    "notes": "There are two concrete objects here. At training time I keep the base model shared and fixed, and ask how small a saved update can be while preserving its effect. At inference time I ask what state must remain available so the next computation can still work. These are different experiments, with different units. The shared question concerns usefulness relative to a receiver and a specified behavior. I do not claim a common predictive law.",
+    "source": "Report §1.2, §5.2–5.3."
+  },
+  {
+    "index": 3,
+    "title": "Autoregressive language models",
+    "section": "FOUNDATIONS · LANGUAGE MODELS",
+    "seconds": 50,
+    "notes": "A language model is a conditional density model over token sequences. The training objective is the same maximum-likelihood principle familiar from statistical learning, applied to next-token prediction. A transformer turns the available prefix into hidden vectors and a softmax distribution. Generation appends a sampled or selected token, then repeats. A token is a piece of text, not necessarily a word. This gives us both a visible token sequence and hidden activations at each position and layer. Those are the objects we later compress or probe.",
+    "source": "Report §2.1."
+  },
+  {
+    "index": 4,
+    "title": "LoRA and QLoRA",
+    "section": "FOUNDATIONS · LOW-RANK ADAPTATION",
+    "seconds": 70,
+    "notes": "Full fine-tuning adjusts a large number of weights. LoRA restricts each selected matrix update to a low-rank factorization BA. We freeze W and train the smaller factors A and B. For a square d by d matrix, this changes the number of trainable values from d squared to 2dr. QLoRA also stores the frozen backbone in four-bit form, while training adapters in higher precision. The four-bit backbone is a training-memory choice. In my experiments I subsequently compress the trained adapter itself. Rank controls a parameterization dimension; the saved numbers still need a numerical code. It is therefore not itself a bit count.",
+    "source": "Report §2.3–2.4. Hu et al., LoRA (2022). Dettmers et al., QLoRA (2023), bibliography entries hu2022lora and dettmers2023qlora."
+  },
+  {
+    "index": 5,
+    "title": "The adapter’s numerical code determines its rate",
+    "section": "FOUNDATIONS · LORA COMPRESSION",
+    "seconds": 55,
+    "notes": "The low-rank factorization reduces the number of values we need to store. Here P denotes the total count across adapted matrices. It does not specify how many bits each value needs. For a uniform b-bit quantizer, the packed payload contains bP bits, plus scales and metadata. The hats denote the dequantized factors the receiver actually uses. Our implementation then applies zlib to the complete payload. Repeated codes and compressible structure can reduce the resulting file size. We measure that size directly and reload it. The reconstruction of BA can differ from the original, so the decisive question is what happens to the model’s output. Nothing here claims that low rank alone guarantees a particular behavioral compression rate.",
+    "source": "Report §2.3–2.5, §3.3 and Appendix Codec ladder. The fixed-width storage equation is direct parameter accounting."
+  },
+  {
+    "index": 6,
+    "title": "Coding and rate–distortion",
+    "section": "FOUNDATIONS · INFORMATION THEORY",
+    "seconds": 60,
+    "notes": "Shannon coding relates probability to description length: an event of probability p takes minus log base two p bits in an ideal code. Entropy averages that quantity. Negative log likelihood therefore has a coding interpretation, but an ideal code length is not automatically the size of a file. Rate–distortion asks for a short representation under a specified error tolerance. The choice of distortion is essential. Here, both sides already have the base model, and I only count the additional adapter file. This is an operational compression experiment over a restricted codec family, not an estimate of an intrinsic Shannon rate–distortion function or a universal lower bound.",
+    "source": "Report §2.5 and §3.3. Cover and Thomas, Elements of Information Theory (2006)."
+  },
+  {
+    "index": 7,
+    "title": "A chain of thought for April and May sales",
+    "section": "FOUNDATIONS · COT EXAMPLE",
+    "seconds": 55,
+    "notes": "Consider the example from the report: Natalia sold 48 clips in April, then half as many in May. The goal is the total. The graph separates facts read from the prompt from derived claims. The first calculation gives May as 24. The final calculation combines that with April to get 72. A written chain of thought can spell out these intermediate claims before the answer. This graph describes an idealized dependency structure. It is the hypothesis that motivated my trajectory work, not an observed circuit inside the model. The next slide shows how an autoregressive model actually generates the text that expresses such a computation.",
+    "source": "Report §4.2, Figure 8, Idealized solution object as a DAG. Original TikZ graph reused from tex/04_reasoning_trajectories.tex."
+  },
+  {
+    "index": 8,
+    "title": "How the model builds a chain of thought",
+    "section": "FOUNDATIONS · AUTOREGRESSIVE COMPUTATION",
+    "seconds": 65,
+    "notes": "Let x be the problem, z the intermediate trace, and y the final answer. The joint probability factorizes into next-token probabilities for the trace and the probability of the answer given that trace. Generation samples, or greedily selects, a token and appends it to the context. Each added token gives the transformer another forward pass. The semantic node n May equals 24 can require several tokens, so semantic steps and token steps differ. Training on demonstrations maximizes this joint likelihood. With final-answer rewards, a reinforcement learning objective instead weights generated traces by their outcomes. Conceptually we can marginalize over traces, but standard generation samples a path rather than evaluating that sum. The displayed answer distribution is the distribution induced by this CoT procedure.",
+    "source": "Report §2.1–2.2 and §4.1. Joint factorization and marginalization follow the probability chain rule."
+  },
+  {
+    "index": 9,
+    "title": "An exact rate for a fixed learned update",
+    "section": "I · FINE-TUNING",
+    "seconds": 85,
+    "notes": "I train a rank-16 adapter once and hold the checkpoint fixed. I then compress it, write a complete file including scales and metadata, reload that file into the frozen backbone, and measure held-out behavior. Every point changes the representation of the same update, rather than training a new model. Rate is file size in bits divided by the number of original adapter values. Retention normalizes the gain over the frozen baseline by the gain of the raw adapter. The operational threshold is the smallest measured rate reaching 90 percent retention. It depends on the codec ladder, adapter architecture, model, and scored behavior. If the raw gain is tiny or nonpositive this ratio needs separate care.",
+    "source": "Report §3.3 and Appendix, Codec ladder."
+  },
+  {
+    "index": 10,
+    "title": "Weight error misses behavioral damage",
+    "section": "I · A FAILED ALLOCATION RULE",
+    "seconds": 55,
+    "notes": "The first allocator spent bits to minimize weight reconstruction error. It could choose a different precision for each row or drop a row. The simple uniform sign code did much better at roughly one bit per adapter value. This figure uses retained GSM8K exact-match gain, so it is a task-accuracy example, distinct from the likelihood-based threshold used in most later results. The original figure shows comparable reconstruction error despite an 83-point retention gap. That counterexample rejects global weight RMSE as a sufficient behavioral distortion. It does not say every adaptive allocator must fail.",
+    "source": "Report §3.4 and media/fineqcomp/plots/mdl_vs_uniform.png. Values 85.7% and 2.6% are labels in the report figure."
+  },
+  {
+    "index": 11,
+    "title": "The corpus ordering changes with the model",
+    "section": "I · RECEIVER DEPENDENCE",
+    "seconds": 75,
+    "notes": "A natural alternative is that every dataset has an intrinsic adapter cost. To test that, I compare the same five corpora on Mistral and Qwen with the same rank, example count, epochs, and codec. Each value averages three independent adapters, and all 30 curves bracket the retention threshold. Instruction is cheaper than math on Mistral, but more expensive on Qwen. Summarization also changes its position. Dialogue remains costly on both. The conclusion is specific: for these two frozen receivers and this protocol, corpus identity alone does not determine rate. Bits per adapter value normalize storage by the original adapter size; they do not assert identical whole-file size across models.",
+    "source": "Report §3.7, table labelled tab:model-corpus-rate."
+  },
+  {
+    "index": 12,
+    "title": "Correction spectra are a promising predictor",
+    "section": "I · CURRENT HYPOTHESIS",
+    "seconds": 80,
+    "notes": "This suggests looking at what a dataset asks a particular model to change. At the output head, a token gradient factorizes into a hidden representation and the prediction error vector p minus the one-hot target. We project these factors and compute a second-moment matrix. The log determinant grows when corrections are large and spread across independent directions. Across 22 distinct model–dataset conditions and seven task families, its within-model rank correlation is 0.764. Leaving one family out gives RMSE 0.187, compared with 0.264 for a model-only fit. Effective rank has slightly better held-out RMSE, so no single statistic wins every criterion. These measures were screened on the same campaign. The permutation correction handles that selection, but only new prospective data can test generality.",
+    "source": "Report §3.7, equations for g_it and I_corr, table tab:relative-info-screen."
+  },
+  {
+    "index": 13,
+    "title": "Different objectives select different boundaries",
+    "section": "II · REASONING TRAJECTORIES",
+    "seconds": 80,
+    "notes": "The starting hypothesis was that reasoning might have one compact sequence of meaningful internal updates. I test four objectives on the same token gaps: movement toward the answer, verified symbolic updates, correctness-probe changes, and local PCA geometry. Each method gets the same number of boundaries. Random utility is zero and the objective-specific oracle is one. Supervised detectors recover their own targets well, as the chart shows for SmolLM. Yet oracle boundary overlap is low, and the best worst-objective utility among the tested rules is only 0.020. Qwen replicates the qualitative result. The warranted conclusion is that these tested objectives favor different partitions, not a theorem that no universal partition could exist.",
+    "source": "Report §4.3. Primary corpus: 310,044 SmolLM3-3B tokens. Replication: 61,691 Qwen3-14B tokens."
+  },
+  {
+    "index": 14,
+    "title": "An explicit handoff restores composition",
+    "section": "II · A CAUSAL STATE TEST",
+    "seconds": 80,
+    "notes": "The next test has a known state space: eight states reached by a short synthetic program, followed by a pointer lookup. Frozen Qwen2.5-32B can read a supplied state and apply a local update perfectly. At horizon two it infers the endpoint about 77 percent of the time. But asking for both endpoint inference and the final lookup in one prompt gives only 13.44 percent accuracy. Instead, I ask it to predict the endpoint, remove the original history, and give the predicted state to a fresh call. Accuracy returns to 76.98 percent, matching state inference. A correct supplied endpoint gives 100 percent. The intervention supports a routing or composition failure in this assay. It does not establish a patchable native hidden-state code.",
+    "source": "Report §4.6, Native language-model state and explicit handoff."
+  },
+  {
+    "index": 15,
+    "title": "Capacity and stable names matter separately",
+    "section": "II · CONTROLLED PROOF STATES",
+    "seconds": 85,
+    "notes": "I then train explicit interfaces on a finite proof task. Four facts define 16 possible ledgers, so exact state identification needs four bits under full support. At each step only the current code survives into the next call. Three bits force a collision. A canonical four-bit code assigns one fixed name to each state. A padded five-bit code keeps that naming and adds capacity. A path-aliased five-bit code gives the same semantic state two names depending on its history. Canonical and padded codes recover all states and remain exact over the tested horizon of 256. The aliased code drops to 30 to 40 percent after three active deductions. Equal bit count therefore does not imply equally usable names. Final-answer accuracy is a separate measure: 97.22 percent for canonical versus 72.22 percent one-pass.",
+    "source": "Report §4.7, Rate, shared meaning, and closure. Three training seeds."
+  },
+  {
+    "index": 16,
+    "title": "Local errors accumulate under repeated use",
+    "section": "II · LIMIT OF THE INTERFACE",
+    "seconds": 60,
+    "notes": "The proof rule is very regular. On a mixed register task with addition, XOR, swap, and conditional updates, the interface becomes much less reliable. A local update is correct about 89 percent of the time, evaluated from the actual supplied state. This avoids unfairly marking a later update wrong just because a previous update already failed. Even so, the final horizon-32 answer is correct only 7.92 percent of the time, close to the 6.25 percent chance rate. The illustrative calculation of 0.89 to the power 31 is about 2.7 percent, but it assumes independent errors and is not a fitted prediction of final accuracy: errors can be dependent or cancel. The important measurement is the complete self-fed execution.",
+    "source": "Report §4.7 and media/reasoning/plots/06_local_global_reliability.pdf. The 0.89^31 illustration is calculated, not experimental."
+  },
+  {
+    "index": 17,
+    "title": "Reasoning and answer rates also reverse",
+    "section": "SYNTHESIS · ONE COMPLETED COMPARISON",
+    "seconds": 70,
+    "notes": "This is the most direct completed connection between the tracks. On MetaMathQA I use the same adapter compression protocol, but score the reasoning and final-answer spans separately. For Mistral, preserving reasoning gain at 90 percent costs about 1.070 bits per value, compared with 0.578 for answer gain. For Qwen, reasoning costs 0.471 and answers 0.575. The ordering reverses. These are update-storage rates for span-specific next-token behavior. They are not the token length of a reasoning trace, nor a measurement of the information needed by reinforcement learning. This study uses one corpus, two models, and a lexical span boundary, with fewer answer tokens. It supports model and utility dependence within that scope.",
+    "source": "Report §5.1–5.3. Rates are 1.070/0.578 on Mistral and 0.471/0.575 on Qwen for reasoning/answer."
+  },
+  {
+    "index": 18,
+    "title": "What the experiments establish",
+    "section": "SYNTHESIS",
+    "seconds": 55,
+    "notes": "I would separate the findings from the interpretation. The adapter protocol gives an actual reloadable rate under a defined utility, and the cross-model comparisons reject dataset-only cost in the tested setting. The reasoning experiments find different useful partitions, then separate state inference from state use. Controlled interfaces show that enough capacity and stable names help, but recursive transition errors remain decisive. These observations support a common interpretation: useful information is relative to a receiver and a task, with an additional update requirement under repeated use. They do not yet reduce to a single quantity that predicts both adapter rate and reasoning reliability.",
+    "source": "Report §3.8, §4.8, §5.2–5.3."
+  },
+  {
+    "index": 19,
+    "title": "The next tests must make new predictions",
+    "section": "PERSPECTIVES",
+    "seconds": 45,
+    "notes": "The strongest next test is prospective. Before fine-tuning a new receiver and task, compute correction spectra separately for reasoning and answer tokens and freeze a prediction of their later rate thresholds. Then test the prediction after training. A second experiment takes one fixed reasoning adapter down the rate ladder and measures whether state decoding, state handoff, and answer behavior fail together. Different failure points would show different information requirements within one model; coincident failure could reveal a stronger common constraint. These are proposed experiments in the report, not completed results.",
+    "source": "Report §5.4, How to test the bridge."
+  },
+  {
+    "index": 20,
+    "title": "Useful information depends on its use",
+    "section": "CONCLUSION",
+    "seconds": 25,
+    "notes": "The main contribution is to replace loose information proxies with concrete behavioral tests. For fine-tuning, I measure a reloadable update at a chosen retention threshold. For reasoning, I distinguish visible or decodable structure from a state that supports continued computation. The strongest shared lesson is dependence on receiver and task, with update reliability becoming essential under recursion. Correction spectra provide a promising way to turn that interpretation into a prediction, but that remains the next research step. Thank you.",
+    "source": "Report abstract, §5 and §6."
+  },
+  {
+    "index": 21,
+    "title": "Equal snapshot information, unequal memory",
+    "section": "BACKUP · EXACT FINITE CONTROL",
+    "seconds": 0,
+    "notes": "This is an exact finite controller, not an LLM experiment. Across 90 cells the full public history and a 12-bit suffix initially have the same support, state mutual information of 2.512 bits, and path leakage of 1.781 bits. Their update rules then diverge: the suffix discards older evidence. At horizon 32 their regrets are 2.20 and 30.91. Across cells, pooled suffix regret is 7.19 times larger. A 12-bit explicit field state removes 79.3 percent of no-memory regret, compared with 93.7 percent for full history and 54.8 percent for the suffix. The field state can still miss a held-out goal if its objective omitted needed fields.",
+    "source": "Report §4.5, Exact control: snapshot information is not memory."
+  },
+  {
+    "index": 22,
+    "title": "Distinct examples at fixed training exposure",
+    "section": "BACKUP · DIVERSITY",
+    "seconds": 0,
+    "notes": "The distinct-example sweep uses 2,000 optimizer steps and 32,000 example presentations in every condition. The mean rate generally rises with distinct records but is not monotone. Each point has three seeds. The fit over 15 runs has R squared 0.78, but it is a within-campaign trend, not a general scaling law. The separate content-diversity control fixes 8,000 examples and increases the number of source problems, moving mean rate from 0.682 to 0.742 over six seeds. SQL replication is weak and inconsistent, whereas XBRL increases in all six model-seed pairs, with a support-coverage confound.",
+    "source": "Report §3.5 and Appendix table tab:distinct-rate."
+  },
+  {
+    "index": 23,
+    "title": "What the codec and threshold count",
+    "section": "BACKUP · MEASUREMENT CONTRACT",
+    "seconds": 0,
+    "notes": "The file includes quantized factors, scales, metadata, bit packing and zlib compression. At one bit and above, matrix rows use scalar quantization, with a sign and row-scale code at one bit. Below one bit per original adapter value, paired A/B rank directions can be dropped. The normalization remains the original adapter size. The base model is shared and excluded from the file budget. R* is a minimum over the tested codec ladder, so it is an attainable measured rate rather than a globally optimal description length. A rank change also changes the carrier; whole-file size and per-value rate should both be inspected when comparing architectures.",
+    "source": "Report §3.3, Appendix Codec ladder and Adapter carrier and location controls."
+  },
+  {
+    "index": 24,
+    "title": "Prediction, accuracy, and state recovery",
+    "section": "BACKUP · METRIC DEFINITIONS",
+    "seconds": 0,
+    "notes": "These metrics answer different questions and should not be substituted for one another. NLL uses a proper probabilistic score at every scored token, while exact match checks a final task answer. Retained gain normalizes either kind of behavior relative to a frozen baseline and raw adapter, so the underlying utility must always be stated. Exact state tests whether the entire finite ledger is correct. Boundary AUC measures ranking of labeled token gaps, whereas boundary F1 measures agreement of selected points. In particular, high AUC does not imply a boundary set useful for another objective, and 90 percent NLL-gain retention is not 90 percent answer accuracy.",
+    "source": "Report §2.7, §3.3, §4.3, §4.7."
+  },
+  {
+    "index": 25,
+    "title": "Semantic boundaries are decodable too",
+    "section": "BACKUP · JUDGED REASONING SPANS",
+    "seconds": 0,
+    "notes": "A larger model judges nine edit types in concise correct SmolLM traces. After alignment and filtering, the analysis retains 1,761 spans across 58 traces. The latent detector reaches AUC 0.982 under a question-disjoint split, and 0.969 away from sentence endings. However, lexical TF–IDF reaches 0.892, so the result is not uniquely latent. Their transfer utilities to the four operational targets are minus 0.012, 0.043, 0.036, and 0.324. This supports the presence of learnable semantic structure, with limited cross-objective transfer. It does not establish a unique decomposition, and the judge labels are not a human gold standard.",
+    "source": "Report §4.4, Judged semantic spans."
+  },
+  {
+    "index": 26,
+    "title": "Correction-spectrum screen and its limits",
+    "section": "BACKUP · PREDICTOR COMPARISON",
+    "seconds": 0,
+    "notes": "The comparison removes exact data reuses and averages training seeds, leaving 22 distinct model–dataset conditions from seven families. Ten measures were screened. The adjusted permutation p value accounts for choosing the strongest candidate within that screen. RMSE leaves out one task family at a time, which is more informative than a pooled in-sample correlation, but still shares the same two model families and development campaign. The factors come from projected output-head gradients, not the full adapter Fisher. Effective rank has the lowest held-out RMSE here, and log volume has the strongest within-model ordering. The next step is to fix the measure and test unseen conditions prospectively.",
+    "source": "Report §3.7, table tab:relative-info-screen."
+  }
+]
