@@ -56,7 +56,6 @@
 \setbeamertemplate{footline}{%
   \leavevmode\hbox{%
   \begin{beamercolorbox}[wd=.86\paperwidth,ht=2.6ex,dp=1.1ex,leftskip=.55cm]{footline}%
-    \insertshorttitle
   \end{beamercolorbox}%
   \begin{beamercolorbox}[wd=.14\paperwidth,ht=2.6ex,dp=1.1ex,rightskip=.5cm plus1fil]{footline}%
     \hfill\insertframenumber
@@ -88,6 +87,7 @@
 \newcommand{\figsource}[2]{\hfill{\footnotesize\color{Muted}\textbf{Source:} \textcite{#1}, #2}}
 \newcommand{\tinycite}[1]{\hfill{\scriptsize\color{Muted}\parencite{#1}}}
 \newcommand{\result}[2]{\begin{minipage}{#1}\centering{\fontsize{22}{24}\selectfont\bfseries\color{Teal}#2}\end{minipage}}
+\newcommand{\stat}[2]{\par\nointerlineskip{\centering{\fontsize{22}{26}\selectfont\bfseries\color{Teal}#1\par}\vspace{1.5pt}{\small #2\par}}\par}
 \newcommand{\chip}[1]{\tikz[baseline=-.5ex]\node[fill=Pale,rounded corners=2pt,inner xsep=5pt,inner ysep=2.3pt,font=\scriptsize\bfseries,text=Ink]{#1};}
 \tikzset{
   arr/.style={-{Latex[length=2.2mm]},line width=0.8pt,draw=Muted},
@@ -126,18 +126,17 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{How much information must survive?}
-\parttag{research question}\vspace{0.25cm}
+\begin{frame}{An information-theoretic approach to}
 \begin{columns}[T,onlytextwidth]
 \column{0.48\textwidth}
 \begin{tikzpicture}
-  \node[tealbox,minimum width=\linewidth,minimum height=1.35cm,align=center] (a) {\large\bfseries Fine-tuning\\[2pt]\normalsize a compressed update};
-  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {\key{Base model already shared}\\Transmit only what learning added.};
+  \node[tealbox,minimum width=\linewidth,minimum height=1.35cm,align=center] (a) {\large\bfseries Fine-tuning\\[2pt]\normalsize relative information to a base model};
+  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {What \textbf{relative information} to a \textbf{base model} must an \textbf{adapter} carry for it to \key{\textbf{learn a dataset}}?.};
 \end{tikzpicture}
 \column{0.48\textwidth}
 \begin{tikzpicture}
-  \node[amberbox,minimum width=\linewidth,minimum height=1.35cm,align=center] (a) {\large\bfseries Reasoning\\[2pt]\normalsize a reusable state};
-  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {What must remain available\\for the \key{next useful computation}?};
+  \node[amberbox,minimum width=\linewidth,minimum height=1.35cm,align=center] (a) {\large\bfseries Reasoning\\[2pt]\normalsize reusable states};
+  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {What \textbf{latent information} must a \textbf{reasoning state} carry for the \key{next useful computation}?};
 \end{tikzpicture}
 \end{columns}
 \vfill
@@ -159,8 +158,12 @@
   \end{tikzpicture}
   \vspace{1.0cm}
   {\color{LightTeal}\bfseries PART I}\par\vspace{0.45cm}
-  {\color{white}\fontsize{34}{37}\selectfont\bfseries Fine-tuning under an information budget}\par
-  \vspace{0.55cm}{\color{white!72}\large How compactly can a learned update be represented while preserving the behavior it learned?}
+  {\color{white}\fontsize{30}{33}\selectfont\bfseries
+    Information-theoretic\\
+    limits of finetuning in\\[-5pt]
+    quantized LLMs\par}
+  \vspace{0.55cm}{\color{white!72}\large Quantized models as compressed representations of their training
+data}
   \note{\small\begin{itemize}
     \item Point de départ du stage: étudier le fine-tuning sous un angle information-théorique.
     \item Question pratique: après avoir appris un dataset, combien de bits de la mise à jour faut-il réellement conserver?
@@ -169,32 +172,36 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{An LLM is an autoregressive neural network}
-\framesubtitle{Internally a stack of attention/MLP blocks --- for Part I, a single function $f_{\theta_0}$}
+\begin{frame}{Abstracting LLMs as autoregressive neural networks}
+\framesubtitle{stack of attention/MLP blocks (+ layernorms...) \rightarrow{} a single function $f_{\theta_0}$}
+\hspace*{0.06\textwidth}
 \begin{columns}[c,onlytextwidth]
 \column{0.36\textwidth}
 \begin{center}
-\includegraphics[height=0.645\paperheight]{assets/papers/transformer_vaswani_fig1}
+\includegraphics[height=0.58\paperheight]{assets/papers/transformer_vaswani_fig1}
+\\[-2pt]
+{\scriptsize\color{Muted}\textbf{Source:} Vaswani et al. (2017), Fig.~1}
 \end{center}
 \column{0.60\textwidth}
 \vspace{0.10cm}
-{\color{Teal}\large Autoregressive objective}\par\vspace{0.02cm}
+\begin{center}
+{\color{Teal}\large Autoregressive objective}
+\end{center}
+\vspace{-0.12cm}
 \[
   p_\theta(y_{1:T}\mid x)=\prod_{t=1}^T p_\theta(y_t\mid x,y_{<t})
 \]
 \vspace{-0.35cm}
 \begin{center}\small\color{Muted}prefix $\longrightarrow$ next-token distribution\end{center}
-\vspace{0.05cm}
+\vspace{0.35cm}
 \begin{center}
 \begin{tikzpicture}
   \node[boxstyle,minimum width=4.1cm,minimum height=.72cm,align=center,font=\small] (m) {attention $+$ MLP, many layers};
   \node[tealbox,below=.55cm of m,minimum width=4.1cm,minimum height=.86cm,align=center] (f) {\large $f_{\theta_0}: x \mapsto p(y\mid x)$};
-  \draw[arr] (m)--node[right,font=\scriptsize,text=Muted]{~collapse microstructure}(f);
+  \draw[arr] (m)--(f);
 \end{tikzpicture}
 \end{center}
 \end{columns}
-\vspace{0.05cm}
-\figsource{vaswani2017attention}{Fig.~1}
 \note{\small\begin{itemize}
   \item Voici l'architecture originale du Transformer, telle qu'elle apparaît dans l'article de Vaswani et al.
   \item Le point n'est pas d'en détailler chaque bloc: il s'agit de montrer qu'une LLM est une pile de blocs attention + MLP.
@@ -205,14 +212,13 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Why we can ignore most Transformer microstructure here}
-\framesubtitle{The rate experiment treats the frozen LLM as a fixed decoder}
-\begin{tikzpicture}[node distance=.45cm]
-  \node[boxstyle,fill=white,minimum width=3.0cm,minimum height=2.1cm,align=center] (micro) {\bfseries Microscopic view\\[5pt]\small attention heads\\MLPs\\residual streams\\layer norms};
-  \node[tealbox,right=1.05cm of micro,minimum width=3.1cm,minimum height=2.1cm,align=center] (coarse) {\bfseries Functional view\\[5pt]\Large $f_{\theta_0}$\\[3pt]\small frozen receiver};
-  \node[amberbox,right=1.05cm of coarse,minimum width=3.0cm,minimum height=2.1cm,align=center] (upd) {\bfseries Learned message\\[5pt]\Large $\Delta\theta$\\[3pt]\small LoRA adapter};
-  \draw[arr] (micro)-- node[above,font=\scriptsize,text=Muted]{collapse details} (coarse);
-  \draw[arr] (upd)-- node[above,font=\scriptsize,text=Muted]{decoded by} (coarse);
+\begin{frame}{Abstracting away the Transformer architecture}
+\begin{tikzpicture}[node distance=2.5cm]
+  \node[boxstyle,fill=white,minimum width=3.25cm,minimum height=2.1cm,align=center] (micro) {\bfseries Microscopic view\\[5pt] attention heads\\MLPs\\residual streams\\layer norms};
+  \node[tealbox,right=2.0cm of micro,minimum width=3.4cm,minimum height=2.1cm,align=center] (coarse) {\bfseries Functional view\\[5pt]\Large $f_{\theta_0}$\\[3pt]\small frozen receiver};
+  \node[amberbox,right=2.0cm of coarse,minimum width=3.25cm,minimum height=2.1cm,align=center] (upd) {\bfseries Learned message\\[5pt]\Large $\Delta\theta$\\[3pt]\small LoRA adapter};
+  \draw[arr] (micro)-- node[above,align=center,font=\scriptsize,text=Muted]{collapse details} (coarse);
+  \draw[arr] (upd)-- node[above,align=center,font=\scriptsize,text=Muted]{decoded by} (coarse);
 \end{tikzpicture}
 \vspace{0.45cm}
 \begin{columns}[T,onlytextwidth]
@@ -232,7 +238,6 @@
 \end{itemize}
 \end{columns}
 \vfill
-\begin{center}\small\color{Muted}We abstract architecture for the \emph{measurement}; not because attention/MLPs are unimportant.\end{center}
 \note{\small\begin{itemize}
   \item Point important à expliciter: on ne prétend pas que l'architecture interne est négligeable en général.
   \item Elle est simplement conditionnée dans notre expérience: même base model, même placement LoRA, même décodeur.
@@ -263,7 +268,7 @@ Keep $\theta_0$ fixed; learn a much smaller task-specific object.\tinycite{aghaj
 \end{block}
 \end{columns}
 \vfill
-\begin{center}\bfseries The dataset has no receiver-independent ``bit cost'': it asks \emph{this} base model for a correction.\end{center}
+\begin{center}\begin{minipage}{0.86\textwidth}\centering\bfseries The relative information of a dataset to a base model needs to be carried by the update (here, the adapter).\end{minipage}\end{center}
 \note{\small\begin{itemize}
   \item « Learning a dataset »: l'optimisation pousse le base model à corriger certaines prédictions sur les exemples du corpus.
   \item Ce qui est appris dépend donc déjà de $\theta_0$.
@@ -273,8 +278,7 @@ Keep $\theta_0$ fixed; learn a much smaller task-specific object.\tinycite{aghaj
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{LoRA: constrain the update, not the base model}
-\framesubtitle{A low-rank parameterization reduces trainable dimension; it is not yet an information rate}
+\begin{frame}{Parameter-efficient finetuning with LoRA}
 \begin{columns}[c,onlytextwidth]
 \column{0.46\textwidth}
 \begin{center}
@@ -299,9 +303,8 @@ W' = W + \Delta W,\qquad
 \end{tikzpicture}
 \end{center}
 \end{columns}
-\vspace{0.05cm}
-\begin{center}\chip{low-rank geometry}\hspace{0.25cm}$\not\equiv$\hspace{0.25cm}\chip{bits needed to preserve behavior}\end{center}
 \vspace{0.10cm}
+
 \figsource{hu2022lora}{Fig.~1}
 \note{\small\begin{itemize}
   \item Figure originale de Hu et al.: $W$ reste gelée, on n'apprend que $A$ et $B$.
@@ -314,21 +317,20 @@ W' = W + \Delta W,\qquad
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{QLoRA: quantize the receiver, train the adapter}
-\framesubtitle{The frozen backbone is stored in 4 bits; the LoRA parameters stay trainable at higher precision}
+\begin{frame}{QLoRA: even more parameter efficient finetuning}
 \begin{center}
 \includegraphics[width=0.710\textwidth]{assets/papers/qlora_detmers_fig1}
 \end{center}
 \vspace{0.10cm}
 \begin{columns}[T,onlytextwidth]
 \column{0.48\textwidth}
-\textbf{What QLoRA quantizes}
+\textbf{QLoRA quantization}
 \begin{itemize}\small\setlength\itemsep{1.5pt}
   \item the \key{frozen base model} (NF4, 4-bit)
   \item adapters remain trainable in 16-bit
 \end{itemize}
 \column{0.48\textwidth}
-\textbf{What we ask afterwards}
+\textbf{We then:}
 \begin{itemize}\small\setlength\itemsep{1.5pt}
   \item fix one trained adapter
   \item compress \key{the learned update itself}
@@ -346,29 +348,39 @@ W' = W + \Delta W,\qquad
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Rate--distortion gives the measurement contract}
-\begin{columns}[T,onlytextwidth]
-\column{0.58\textwidth}
+\begin{frame}{Some information theory: Rate--distortion}
+\begin{center}
 \begin{tikzpicture}[node distance=.45cm]
   \node[tealbox,minimum width=2.55cm,minimum height=1.05cm,align=center] (side) {\bfseries Side information\\\small base model + layout};
-  \node[amberbox,right=.55cm of side,minimum width=2.45cm,minimum height=1.05cm,align=center] (msg) {\bfseries Message\\\small serialized adapter};
-  \node[boxstyle,right=.55cm of msg,minimum width=2.6cm,minimum height=1.05cm,align=center] (recv) {\bfseries Receiver\\\small reload + inference};
-  \node[tealbox,below=.7cm of recv,minimum width=2.6cm,minimum height=1.05cm,align=center] (u) {\bfseries Distortion\\\small lost held-out behavior};
-  \draw[arr] (side)--(recv); \draw[arr] (msg)--(recv); \draw[arr] (recv)--(u);
+  \node[amberbox,right=.5cm of side,minimum width=2.45cm,minimum height=1.05cm,align=center] (msg) {\bfseries Message\\\small serialized adapter};
+  \node[boxstyle,right=.5cm of msg,minimum width=2.6cm,minimum height=1.05cm,align=center] (recv) {\bfseries Receiver\\\small reload + inference};
+  \node[tealbox,right=.5cm of recv,minimum width=2.85cm,minimum height=1.05cm,align=center] (u) {\bfseries Distortion\\\small lost held-out behavior};
+  \draw[arr] (side)--(msg); \draw[arr] (msg)--(recv); \draw[arr] (recv)--(u);
 \end{tikzpicture}
-\column{0.38\textwidth}
+\end{center}
+\vspace{0.35cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\centering\footnotesize
+\phantom{Here:}
 \[
-R^*(D)=\min R \quad \text{s.t.}\quad d(\hat\theta,\theta)\le D
+\begin{aligned}
+R^*(D)&=\min R\\[-2pt]
+&\text{s.t.}\quad d(\hat\theta,\theta)\le D
+\end{aligned}
 \]
-\vspace{-0.1cm}
-\small
+\column{0.46\textwidth}
+\centering\footnotesize
 Here:
 \[
-R^*(0.90)=\min\{R:\mathrm{Retain}(R)\ge .90\}.
+\begin{aligned}
+R^*(0.90)&=\min\{R:\\[-2pt]
+&\mathrm{Retain}(R)\ge .90\}.
+\end{aligned}
 \]
 \end{columns}
 \vfill
-\begin{center}\bfseries Rate has no meaning without a receiver and a distortion/utility.\end{center}
+\begin{center}\bfseries Rate is defined purely relatively to a receiver and a distortion/utility.\end{center}
 \tinycite{berger1971rate,cover2006elements,grunwald2019mdl}
 \note{\small\begin{itemize}
   \item Rate--distortion pose exactement la bonne forme de question: le message le plus court sous une contrainte d'erreur.
@@ -378,61 +390,88 @@ R^*(0.90)=\min\{R:\mathrm{Retain}(R)\ge .90\}.
 \end{itemize}}
 \end{frame}
 
-% -----------------------------------------------------------------------------
-\begin{frame}{Pilot lesson: nominal rank is not a rate}
+\begin{frame}{Can LoRA rank stand in for a rate?}
+\framesubtitle{First hypothesis}
 \begin{columns}[T,onlytextwidth]
-\column{0.50\textwidth}
-\begin{tikzpicture}[scale=.93]
-  \draw[->,draw=Muted] (0,0)--(5.2,0) node[right,font=\scriptsize]{LoRA rank};
-  \draw[->,draw=Muted] (0,0)--(0,3.4) node[above,font=\scriptsize,align=center]{held-out\\improvement};
-  \foreach \x/\y/\lab in {0.5/.25/0,1.4/2.35/2,2.3/2.7/4,3.2/2.92/8,4.4/3.04/16}{
-    \fill[Teal] (\x,\y) circle (2.3pt); \node[below,font=\scriptsize] at (\x,-.05){\lab};
-  }
-  \draw[thick,Teal] plot[smooth] coordinates{(.5,.25)(1.4,2.35)(2.3,2.7)(3.2,2.92)(4.4,3.04)};
-  \node[align=center,font=\small,text=Ink] at (3.1,1.15) {most gain arrives\\at very low rank};
-\end{tikzpicture}
+\column{0.46\textwidth}
+\begin{block}{Question}
+If useful adaptation lives in a small subspace (c.f. LoRA's rank), does the smallest effective rank behave like an information budget? \\
+\vspace{0.25cm}
+Rank directly limits how many degrees of freedom the update may use. If rank is equivalent to the budget, the held-out gain should saturate exactly where the budget is exhausted.
+\end{block}
 \column{0.46\textwidth}
 \small
-\begin{itemize}\setlength\itemsep{7pt}
-  \item useful adaptation can occupy a low-dimensional subspace \parencite{aghajanyan2021intrinsic,hu2022lora}
-  \item but rank only counts degrees of freedom
-  \item dataset size/compressibility pilots confounded optimization exposure
-  \item next step: \key{fix the learned update, vary only its code}
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{5pt}
+  \item Qwen2.5-0.5B, QLoRA sweep
+  \item ranks $\in\{0,2,4,8,16\}$; rank 0 = frozen baseline
+  \item instruction data from Alpaca and Dolly
+  \item dataset variants: duplicated examples, more regular templates
 \end{itemize}
+\vspace{0.3cm}
+\chip{prediction} gain saturates at the smallest sufficient rank
 \end{columns}
 \note{\small\begin{itemize}
-  \item Premier pilote: sweep de rang QLoRA. La plupart du gain apparaissait très tôt.
-  \item Cela confirme l'utilité d'une paramétrisation basse dimension, mais pas un rate en bits.
-  \item Les pilotes de compressibilité du dataset étaient aussi confondus par l'exposition d'optimisation.
-  \item Décision méthodologique: entraîner une fois, puis ne varier que la représentation du même checkpoint.
+  \item Première hypothèse: le rang LoRA comme proxy bon marché de ce qu'un finetuning écrit.
+  \item Design minimal: un seul bouton, le rang, et on regarde où le gain sature.
+  \item Variantes de dataset: duplication d'exemples et templates plus réguliers.
 \end{itemize}}
 \end{frame}
-
+% -----------------------------------------------------------------------------
+% -----------------------------------------------------------------------------
+\begin{frame}{Can LoRA rank stand in for a rate? Not quite.}
+\begin{columns}[c,onlytextwidth]
+\column{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 39bp,clip]{assets/real/rank_scaling.pdf}
+\par\vspace{0.1cm}
+{\footnotesize\color{Muted} smallest file retaining 90\% of the gain, Mbit\par}
+\column{0.44\textwidth}
+\par Instead of a rough match in compressed adapter size, quadrupling the rank instead roughly triples it: {\color{Teal}\bfseries $\times2.9$}, {\color{Teal}\bfseries $\times3.1$}.
+\vspace{0.35cm}
+\par Our other pilot knobs failed too: duplication changes optimization exposure, surface compressibility is not a clean intervention.
+\end{columns}
+\vspace{0.25cm}
+\begin{center}\begin{minipage}{0.88\textwidth}\centering\bfseries\small
+Next question: hold one learned update fixed, and vary only how many bits are used to store it.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Chaque paire de barres: même corpus, même comportement à préserver, seul le rang change.
+  \item Si le fichier mesurait le contenu de la tâche, les deux barres seraient à la même hauteur.
+  \item Or quadrupler le rang triple à peu près le fichier: facteurs 2.9 et 3.1.
+  \item Le rang dimensionne le contenant, pas le contenu: il compte des degrés de liberté.
+  \item Les autres leviers pilotes échouent aussi: duplication et compressibilité de surface ne sont pas des interventions propres.
+  \item D'où le protocole suivant: figer une mise à jour apprise et ne faire varier que son code.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Exact-rate protocol: one update, many codes}
-\begin{tikzpicture}[node distance=.38cm]
-  \node[tealbox,minimum width=2.25cm,minimum height=.95cm,align=center] (train) {\bfseries Train once\\rank-16 LoRA};
-  \node[amberbox,right=.45cm of train,minimum width=2.15cm,minimum height=.95cm,align=center] (q) {\bfseries Quantize\\$b\in\{\ldots\}$};
-  \node[boxstyle,right=.45cm of q,minimum width=2.35cm,minimum height=.95cm,align=center] (pack) {\bfseries Pack file\\scales + metadata + zlib};
-  \node[tealbox,right=.45cm of pack,minimum width=2.0cm,minimum height=.95cm,align=center] (load) {\bfseries Reload\\base + adapter};
-  \node[amberbox,right=.45cm of load,minimum width=2.0cm,minimum height=.95cm,align=center] (eval) {\bfseries Evaluate\\held-out NLL};
+\begin{columns}[c,onlytextwidth]
+\column{0.48\textwidth}
+\begin{center}
+\begin{tikzpicture}[node distance=.28cm]
+  \node[tealbox,minimum width=3.0cm,minimum height=.82cm,align=center] (train) {\bfseries Train once\\rank-16 LoRA};
+  \node[amberbox,below=of train,minimum width=2.7cm,minimum height=.82cm,align=center] (q) {\bfseries Quantize\\$b\in\{\ldots\}$};
+  \node[boxstyle,below=of q,minimum width=3.5cm,minimum height=.82cm,align=center] (pack) {\bfseries Pack file\\scales + metadata + zlib};
+  \node[tealbox,below=of pack,minimum width=3.0cm,minimum height=.82cm,align=center] (load) {\bfseries Reload\\base + adapter};
+  \node[amberbox,below=of load,minimum width=3.0cm,minimum height=.82cm,align=center] (eval) {\bfseries Evaluate\\held-out NLL};
   \draw[arr] (train)--(q);\draw[arr] (q)--(pack);\draw[arr] (pack)--(load);\draw[arr] (load)--(eval);
 \end{tikzpicture}
-\vspace{0.55cm}
-\begin{columns}[T,onlytextwidth]
-\column{0.47\textwidth}
+\end{center}
+\column{0.48\textwidth}
+\begin{center}
 \[
 R=\frac{8\times\text{file bytes}}{P}
 \]
-\centering\small $P=$ number of values in the original adapter
-\column{0.49\textwidth}
+\small $P=$ number of values in the original adapter
+\vspace{0.35cm}
 \[
 \mathrm{Retain}(R)=\frac{L_0-L_R}{L_0-L_{raw}}
 \]
-\centering\small $L_0$: frozen base; $L_{raw}$: uncompressed adapter
+\small $L_0$: frozen base; $L_{raw}$: uncompressed adapter
+\end{center}
 \end{columns}
-\vfill
-\begin{center}\chip{same checkpoint}\hspace{.2cm}\chip{same receiver}\hspace{.2cm}\chip{same held-out utility}\end{center}
 \note{\small\begin{itemize}
   \item On entraîne un adapter une seule fois et on fige le checkpoint.
   \item Chaque point de courbe = autre représentation numérique du même update.
@@ -441,35 +480,46 @@ R=\frac{8\times\text{file bytes}}{P}
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Experiment: can a fixed budget be allocated more intelligently?}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+At a matched file size, does spending bits where reconstruction is hardest preserve more behavior than uniform precision?
+\end{block}
+\vspace{0.25cm}
+\begin{block}{Why this design answers it}
+\small The adapter checkpoint is fixed, so the two codecs differ only in allocation. Any difference in retained gain is attributable to where the bits went.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{5pt}
+  \item one rank-16 LoRA on 32k MetaMathQA rows, Mistral-7B on an NF4 base
+  \item per row of a LoRA factor: drop, or encode at 1, 2, 3, 4, 8 bits
+  \item Lagrangian objective trades reconstruction error against code length
+  \item control: plain zero-free uniform code at the same rate
+\end{itemize}
+\vspace{0.25cm}
+\chip{prediction} error-aware allocation wins at equal rate
+\note{\small\begin{itemize}
+  \item Le budget est fixé: seule l'allocation change entre les deux codecs.
+  \item L'allocateur peut supprimer une ligne ou la coder sur 1, 2, 3, 4 ou 8 bits.
+  \item Hypothèse: les lignes les plus dures à reconstruire sont celles qui comptent pour le comportement.
+\end{itemize}}
+\end{columns}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Weight reconstruction error is not behavioral distortion}
 \framesubtitle{A negative result that forces output-level evaluation}
-\begin{columns}[T,onlytextwidth]
-\column{0.58\textwidth}
-\begin{tikzpicture}
-  \begin{axis}[
-    width=7.3cm,height=4.3cm,
-    xmin=0,xmax=1.0,ymin=0,ymax=1.0,
-    xlabel={relative weight RMSE},ylabel={retained gain},
-    axis line style={draw=Muted},tick style={draw=Muted},
-    ticklabel style={font=\scriptsize},label style={font=\scriptsize},
-    grid=major,grid style={Line!55}]
-    \addplot[only marks,mark=*,mark size=3pt,Teal] coordinates{(.70,.857)};
-    \addplot[only marks,mark=square*,mark size=3pt,Amber] coordinates{(.67,.026)};
-    \node[font=\scriptsize,anchor=west] at (axis cs:.70,.857){uniform sign code};
-    \node[font=\scriptsize,anchor=west] at (axis cs:.67,.026){adaptive RMSE allocator};
-  \end{axis}
-\end{tikzpicture}
-\column{0.38\textwidth}
-\vspace{0.25cm}
-\result{\linewidth}{\(85.7\%\)}\\[-1pt]\centering\small retained gain, uniform code
-\vspace{0.45cm}
-\result{\linewidth}{\(2.6\%\)}\\[-1pt]\centering\small retained gain, adaptive RMSE
-\vspace{0.5cm}
-\small Similar weight error; radically different behavior.
-\end{columns}
-\vfill
-\begin{center}\bfseries The relevant distortion lives at the receiver's output.\end{center}
+\begin{center}
+\includegraphics[width=0.95\textwidth,trim=0bp 0bp 0bp 26bp,clip]{assets/real/mdl_vs_uniform.pdf}
+\end{center}
+\vspace{0.05cm}
+{\centering\small
+{\bfseries\color{Teal}85.7\%} retained gain, uniform code \; · \;
+{\bfseries\color{Teal}2.6\%} retained gain, adaptive RMSE\par}
+\vspace{0.15cm}
 \note{\small\begin{itemize}
   \item Premier allocateur adaptatif: minimiser une erreur de reconstruction des facteurs LoRA sous budget.
   \item Contre-exemple: RMSE similaire, mais environ 85.7\% de gain conservé pour le sign code uniforme contre 2.6\% pour l'adaptatif.
@@ -478,33 +528,68 @@ R=\frac{8\times\text{file bytes}}{P}
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{How do we interpret this negative result?}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\begin{block}{Ruled out}
+\small Global weight error is not a sufficient measure of useful adapter information: two reconstructions with similar RMSE can preserve very different behavior.
+\end{block}
+\column{0.48\textwidth}
+\begin{block}{Implication}
+\small The distortion must be read at the receiver's output, which is exactly the $\mathrm{Retain}(R)$ criterion the protocol already uses.
+\end{block}
+\end{columns}
+\vfill
+\begin{center}\begin{minipage}{0.88\textwidth}\centering\bfseries
+The question shifts from \emph{where} to spend a fixed budget to what determines how large the required budget is.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Conclusion scientifique: la norme dans l'espace des poids ne suffit pas comme distortion.
+  \item La mesure doit se faire à la sortie du receveur, pas sur les poids.
+  \item Et la question change: non plus où dépenser les bits, mais ce qui fixe leur nombre.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: does more distinct data cost more bits?}
+\framesubtitle{Compute-matched distinct-example panel}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Does the required rate grow with the amount of distinct training data, at fixed training exposure?
+\end{block}
+\vspace{0.25cm}
+\begin{block}{Why this design answers it}
+\small Holding both optimizer steps and total presentations fixed removes the pilot confound: only the number of distinct rows changes.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{5pt}
+  \item MetaMathQA, 2{,}000 to 32{,}000 distinct examples
+  \item optimizer steps fixed at 2{,}000
+  \item total example presentations fixed at 32{,}000
+  \item 15 runs, same codec ladder, $R^*(0.90)$ read off each curve
+\end{itemize}
+\vspace{0.25cm}
+\chip{prediction} $R^*$ increases with distinct rows
+\end{columns}
+\note{\small\begin{itemize}
+  \item On fait varier le nombre d'exemples distincts sans changer l'exposition d'optimisation.
+  \item Steps et présentations totales sont fixés: c'est ce qui rend l'intervention propre.
+  \item On lit ensuite R*(0.90) sur chaque courbe de rétention.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{More distinct content generally requires more adapter rate}
 \framesubtitle{Compute-matched MetaMathQA pilot: 15 runs}
 \begin{columns}[T,onlytextwidth]
 \column{0.62\textwidth}
-\begin{tikzpicture}
-\begin{axis}[
-  width=7.6cm,height=4.5cm,
-  xmode=log,log basis x=2,
-  xlabel={distinct training examples},ylabel={$R^*(0.90)$ [bits/value]},
-  ymin=.4,ymax=1.05,xmin=1800,xmax=36000,
-  axis line style={draw=Muted},tick style={draw=Muted},
-  ticklabel style={font=\scriptsize},label style={font=\scriptsize},
-  grid=major,grid style={Line!55},
-  xtick={2000,4000,8000,16000,32000},xticklabels={2k,4k,8k,16k,32k}]
-  \addplot[only marks,mark=*,mark size=2.4pt,Teal] coordinates{
-    (2000,.52)(2000,.55)(2000,.57)
-    (4000,.60)(4000,.63)(4000,.61)
-    (8000,.69)(8000,.72)(8000,.70)
-    (16000,.76)(16000,.79)(16000,.74)
-    (32000,.86)(32000,.89)(32000,.82)};
-  \addplot[thick,Amber,domain=2000:32000,samples=80]{-.26 + .081*ln(x)/ln(2)};
-\end{axis}
-\end{tikzpicture}
+\vspace{0.15cm}
+\includegraphics[width=\linewidth,trim=487bp 0bp 0bp 44bp,clip]{assets/real/rate_vs_retention.pdf}
 \column{0.34\textwidth}
 \vspace{0.4cm}
-\result{\linewidth}{$R^2=0.78$}\\[-1pt]\centering\small internal fit
+\stat{$R^2=0.78$}{internal fit}
 \vspace{0.55cm}
 \small
 \begin{itemize}
@@ -522,6 +607,119 @@ R=\frac{8\times\text{file bytes}}{P}
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Distinct rows or distinct content?}
+\framesubtitle{Two controls behind the same trend}
+\begin{center}
+\includegraphics[width=0.76\textwidth,trim=0bp 0bp 0bp 8bp,clip]{assets/real/content_and_rows.pdf}
+\end{center}
+\vspace{0.1cm}
+{\centering\small
+left: {\bfseries\color{Teal}$0.682\to0.742$} bits per value as source problems grow behind a fixed 8{,}000-row corpus \; · \;
+right: row count moves the budget too, six seeds\par}
+\vspace{0.15cm}
+\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
+Content diversity, not just row count, moves the required rate --- but more diverse data also improved the model more.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Contrôle gauche: 8 000 exemples fixes, on fait varier le nombre de problèmes sources.
+  \item R* moyen passe de 0.682 à 0.742 bits par valeur sur six graines.
+  \item Contrôle droit: le nombre de lignes distinctes bouge aussi le budget à exposition fixée.
+  \item Objection restante: les adapters les plus divers améliorent aussi plus le modèle.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Is the rate just a function of how much was learned?}
+\framesubtitle{Two controls that vary learned gain on purpose}
+\begin{columns}[T,onlytextwidth]
+\column{0.50\textwidth}
+\begin{block}{Style rewrites}
+\small Same answers rewritten in five deterministic styles, from short plain responses to symbolic ones.
+\end{block}
+\vspace{0.2cm}
+\small
+learned gain \quad {\color{Teal}\bfseries $0.555\to1.062$} bits/token\par
+\vspace{2pt}
+required rate \quad {\color{Teal}\bfseries $0.684\to0.763$} bits/value
+\column{0.44\textwidth}
+\begin{block}{Optimizer-budget sweep}
+\small A separate 16-fold sweep changes how much is learned while the data content stays fixed.
+\end{block}
+\vspace{0.2cm}
+\small Again no matching rate increase.
+\vspace{0.35cm}
+\par\small Earlier math runs had suggested the opposite: over 48 rank-16 runs, held-out gain explained 56\% of the variance in $R^*$ --- but over a narrow range of gains.
+\end{columns}
+\vfill
+\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
+Nearly doubling the learned behavior barely moves the required rate: improvement alone does not determine it.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Deux façons différentes de faire varier le gain appris, à contenu constant.
+  \item Les réécritures de style doublent presque le gain, mais R* bouge à peine.
+  \item Le sweep d'optimisation ne produit pas non plus l'augmentation attendue.
+  \item Ensemble, ils éliminent le gain comportemental seul comme déterminant du taux.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Control: a task whose source information we know by construction}
+\framesubtitle{An uncalibrated proxy is ruled out --- but source bits still do not explain adapter rate}
+\begin{columns}[T,onlytextwidth]
+\column{0.42\textwidth}
+\begin{block}{Question}
+\small Is our information proxy calibrated at all, when the true number of source bits is known?
+\end{block}
+\vspace{0.15cm}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{3pt}
+  \item each prompt maps to one of 16 one-token labels
+  \item conditions differ in the number of independent 4-bit assignments
+  \item description length estimated with a conditional prequential code
+\end{itemize}
+\column{0.54\textwidth}
+\centering
+\includegraphics[width=0.86\linewidth]{assets/real/known_information_validation.pdf}
+\par\vspace{0.1cm}
+{\footnotesize the code orders the 4-, 64-, 128-, 256- and 512-bit conditions correctly, within $1.1$--$3.5\times$ the known source count\par}
+\end{columns}
+\note{\small\begin{itemize}
+  \item Tâche synthétique: on construit nous-mêmes le nombre de bits sources.
+  \item Le code prequential conditionnel retrouve le bon ordre des conditions.
+  \item Il reste dans un facteur 1.1 à 3.5 du compte connu: le proxy n'est pas absurde.
+  \item Mais cela n'explique toujours pas le taux d'adapter.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: does a dataset have one intrinsic adapter cost?}
+\framesubtitle{Change the receiver, keep everything else fixed}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+If cost were a property of the corpus, its ordering across corpora should survive a change of frozen model.
+\end{block}
+\vspace{0.25cm}
+\begin{block}{Why this design answers it}
+\small Changing the frozen model is a direct change of receiver, with the dataset, rank, epochs and codec held fixed. A reversal in ordering falsifies intrinsic cost outright.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{5pt}
+  \item five corpora: instruction, summarization, math, code, dialogue
+  \item two frozen receivers: Mistral-7B and Qwen2.5-7B
+  \item same LoRA rank, example count, epochs and codec
+  \item 3 independently trained adapters per cell, 30 rate curves
+\end{itemize}
+\vspace{0.25cm}
+\chip{prediction} ordering is preserved if cost is intrinsic
+\end{columns}
+\note{\small\begin{itemize}
+  \item Test direct de la dépendance au receveur: on ne change que le modèle gelé.
+  \item Cinq corpus, deux modèles, tout le reste identique, trois graines par cellule.
+  \item Si le coût était intrinsèque au dataset, l'ordre des corpus devrait être conservé.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{The same dataset has a different cost for a different base model}
 \framesubtitle{$R^*(0.90)$ in bits per original adapter value; 3 seeds per cell}
@@ -535,7 +733,7 @@ R=\frac{8\times\text{file bytes}}{P}
   axis line style={draw=Muted},tick style={draw=Muted},
   ticklabel style={font=\scriptsize},label style={font=\scriptsize},
   xlabel={$R^*(0.90)$},
-  legend style={font=\scriptsize,draw=none,at={(.5,-.18)},anchor=north,legend columns=2},
+  legend style={font=\scriptsize,draw=none,at={(.5,-.30)},anchor=north,legend columns=2},
   grid=major,grid style={Line!55}]
   \addplot[fill=Teal!78,draw=Teal] coordinates{(.913,Dialogue)(.891,Code)(.737,Math)(.652,Summarization)(.643,Instruction)};
   \addplot[fill=Amber!78,draw=Amber] coordinates{(1.176,Dialogue)(.668,Code)(.411,Math)(.388,Summarization)(.774,Instruction)};
@@ -563,6 +761,60 @@ R=\frac{8\times\text{file bytes}}{P}
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Replicating the diversity effect on two structured tasks}
+\framesubtitle{Fixed example count; only the number of domains or companies changes}
+\begin{center}
+\includegraphics[width=0.84\textwidth,trim=0bp 0bp 0bp 10bp,clip]{assets/real/diversity_replication.pdf}
+\end{center}
+\vspace{0.1cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\small XBRL moves in the same direction in all six matched model--seed comparisons.
+\column{0.46\textwidth}
+\small SQL changes much less, and inconsistently across seeds.
+\end{columns}
+\vspace{0.15cm}
+\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
+Content diversity matters in some tasks and not others --- so it is not the underlying quantity either.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item On garde le nombre d'exemples fixe et on fait varier le nombre de domaines ou d'entreprises.
+  \item XBRL: même direction dans les six comparaisons appariées modèle-graine.
+  \item SQL: effet faible et instable selon les graines.
+  \item L'intervention XBRL n'est pas parfaitement propre: la couverture du support change aussi.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: what does the dataset ask \emph{this} model to correct?}
+\framesubtitle{A model-relative candidate, screened against ten alternatives}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\begin{block}{Question}
+Can a quantity computed on the frozen model, before training, order the required adapter rate?
+\end{block}
+\vspace{0.2cm}
+\small
+For a scored token the output-head gradient factorizes as $g_{it}=h_{it}\otimes(p_{it}-e_{y_{it}})$: what the model is representing, times how its prediction must change.
+\column{0.46\textwidth}
+\small
+\textbf{Screen}
+\begin{itemize}\setlength\itemsep{5pt}
+  \item 22 distinct model--dataset conditions, 7 task families, 2 frozen 7B receivers
+  \item ranked by within-model $\rho$ and by RMSE on a held-out task family
+  \item permutation test corrected for screening ten candidate measures
+\end{itemize}
+\end{columns}
+\vfill
+\begin{center}\begin{minipage}{0.9\textwidth}\centering
+\small $I_{\mathrm{corr}}(D;M)=\log\det(I+F)=\sum_j\log(1+\lambda_j(F))$ \quad grows with large corrections spread over many independent directions
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item L'idée: mesurer les corrections que le dataset demande à ce modèle gelé précis.
+  \item Le gradient de la tête de sortie se factorise en état caché et erreur de prédiction.
+  \item Dix mesures candidates ont été screenées: le test de permutation en tient compte.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{A model-relative predictor: the correction spectrum}
 \begin{columns}[T,onlytextwidth]
@@ -578,7 +830,7 @@ R=\frac{8\times\text{file bytes}}{P}
 \end{tikzpicture}
 \column{0.40\textwidth}
 \vspace{0.35cm}
-\result{\linewidth}{$\rho=0.764$}\\[-1pt]\centering\small within-model Spearman
+\stat{$\rho=0.764$}{within-model Spearman}
 \vspace{0.55cm}
 \small
 22 conditions · 7 task families · 2 frozen 7B models
@@ -598,6 +850,36 @@ Large corrections in many independent directions tend to require a larger behavi
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Screening ten model-relative measures}
+\framesubtitle{Ranking $R^*(0.90)$ within a model, and predicting a held-out task family}
+\begin{center}\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lrrrr}
+\toprule
+Measure & Within-model $\rho$ & Adjusted $p$ & Held-out RMSE & Pooled $\rho$\\
+\midrule
+Correction Fisher log-volume & \textbf{0.764} & \textbf{0.00034} & 0.187 & 0.584\\
+Correction Fisher effective rank & 0.609 & 0.0112 & \textbf{0.181} & \textbf{0.814}\\
+Surprise-weighted hidden log-volume & 0.614 & 0.0103 & 0.204 & 0.441\\
+Base-model target code length & 0.200 & 0.524 & 0.261 & 0.269\\
+Model-only fit & --- & --- & 0.264 & ---\\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{0.25cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\small It follows the SQL/XBRL contrast: flat on SQL, rising on XBRL for both receivers.
+\column{0.48\textwidth}
+\small It is not learning gain under another name: correction log-volume and held-out gain correlate at $\rho=-0.275$.
+\end{columns}
+\note{\small\begin{itemize}
+  \item Le log-volume de Fisher des corrections est notre meilleur prédicteur actuel.
+  \item Il reproduit le contraste SQL/XBRL, ce qui est un bon signe de cohérence.
+  \item Et il n'est pas un synonyme du gain appris: la corrélation avec le gain est négative.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Part I: what is established?}
 \begin{columns}[T,onlytextwidth]
@@ -617,7 +899,7 @@ Large corrections in many independent directions tend to require a larger behavi
 \end{block}
 \end{columns}
 \vfill
-\begin{center}\Large\bfseries Information written by fine-tuning is not in the dataset alone.\end{center}
+\begin{center}\begin{minipage}{0.78\textwidth}\centering\Large\bfseries Information written by fine-tuning is not in the dataset alone.\end{minipage}\end{center}\vfill
 \note{\small\begin{itemize}
   \item Résumé de la Partie I avant de changer d'objet.
   \item Contribution méthodologique: un taux exact, rechargeable et comportemental.
@@ -631,7 +913,7 @@ Large corrections in many independent directions tend to require a larger behavi
 \begin{frame}[plain]
   \begin{tikzpicture}[remember picture,overlay]\fill[Dark] (current page.south west) rectangle (current page.north east);\end{tikzpicture}
   \vspace{1.0cm}{\color{LightTeal}\bfseries PART II}\par\vspace{0.45cm}
-  {\color{white}\fontsize{34}{37}\selectfont\bfseries Reasoning states}\par
+  {\color{white}\fontsize{30}{33}\selectfont\bfseries Reasoning states}\par
   \vspace{0.55cm}{\color{white!72}\large At inference time, the information object is an intermediate state that should support future computation.}
   \note{\small\begin{itemize}
     \item Deuxième axe: à l'inférence, l'objet n'est plus une mise à jour de paramètres.
@@ -647,11 +929,11 @@ Large corrections in many independent directions tend to require a larger behavi
 \column{0.58\textwidth}
 \begin{tikzpicture}[node distance=.22cm]
   \node[boxstyle,fill=Pale,minimum width=1.25cm,minimum height=.72cm] (x) {$x$};
-  \node[amberbox,right=.27cm of x,minimum width=1.25cm,minimum height=.72cm] (z1) {$z_1$};
-  \node[amberbox,right=.18cm of z1,minimum width=1.25cm,minimum height=.72cm] (z2) {$z_2$};
-  \node[right=.12cm of z2] (dots) {$\cdots$};
-  \node[amberbox,right=.12cm of dots,minimum width=1.25cm,minimum height=.72cm] (zt) {$z_T$};
-  \node[tealbox,right=.3cm of zt,minimum width=1.35cm,minimum height=.72cm] (y) {$y$};
+  \node[amberbox,right=.42cm of x,minimum width=1.25cm,minimum height=.72cm] (z1) {$z_1$};
+  \node[amberbox,right=.42cm of z1,minimum width=1.25cm,minimum height=.72cm] (z2) {$z_2$};
+  \node[right=.42cm of z2,inner xsep=1pt] (dots) {$\cdots$};
+  \node[amberbox,right=.42cm of dots,minimum width=1.25cm,minimum height=.72cm] (zt) {$z_T$};
+  \node[tealbox,right=.42cm of zt,minimum width=1.25cm,minimum height=.72cm] (y) {$y$};
   \draw[arr] (x)--(z1);\draw[arr] (z1)--(z2);\draw[arr] (z2)--(dots);\draw[arr] (dots)--(zt);\draw[arr] (zt)--(y);
   \node[below=.6cm of z2,align=center,font=\small,text width=5cm] {intermediate text becomes a computational workspace};
 \end{tikzpicture}
@@ -678,17 +960,12 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 % -----------------------------------------------------------------------------
 \begin{frame}{Token trajectory $\neq$ reasoning-state trajectory}
 \begin{columns}[T,onlytextwidth]
-\column{0.48\textwidth}
-\begin{tikzpicture}
-  \node[anchor=west,font=\small] at (0,3.4) {visible tokens};
-  \foreach \x/\txt in {0.0/{April},1.15/{48},2.0/{half},3.0/{24},4.0/{total},5.1/{72}}{
-    \node[draw=Line,rounded corners=2pt,fill=white,minimum width=.85cm,minimum height=.55cm] at (\x,2.7){\txt};
-  }
-  \draw[thick,Amber] plot[smooth] coordinates{(0,1.0)(1.15,1.2)(2.0,.8)(3.0,1.9)(4.0,1.55)(5.1,2.25)};
-  \foreach \x/\y in {0/1.0,1.15/1.2,2/.8,3/1.9,4/1.55,5.1/2.25}{\fill[Amber] (\x,\y) circle (1.7pt);}
-  \node[anchor=west,font=\small,text=Muted] at (0,.3) {latent trajectory $h_t^{(\ell)}$};
-\end{tikzpicture}
-\column{0.48\textwidth}
+\column{0.54\textwidth}
+\vspace{0.35cm}
+\includegraphics[width=\linewidth,trim=0bp 0bp 292bp 0bp,clip]{assets/real/depth_length.pdf}\par
+\vspace{0.15cm}
+{\footnotesize\color{Muted} surface token length vs.\ active deduction depth\par}
+\column{0.42\textwidth}
 \begin{block}{Candidate reasoning state}
 \small A compact intermediate representation that is sufficient for a specified future computation.
 \end{block}
@@ -710,33 +987,89 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{The hypothesis we started from: a solution object}
+\framesubtitle{A long derivation hiding a short series of stable updates}
+\begin{columns}[T,onlytextwidth]
+\column{0.52\textwidth}
+\centering
+\begin{tikzpicture}[scale=.92,transform shape,font=\scriptsize]
+  \node[boxstyle,minimum width=2.3cm,minimum height=.7cm,align=center] (f1) at (0,0) {April sales\\$n_{\mathrm{Apr}}=48$};
+  \node[boxstyle,minimum width=2.3cm,minimum height=.7cm,align=center] (f2) at (2.7,0) {``half as many''\\$n_{\mathrm{May}}=n_{\mathrm{Apr}}/2$};
+  \node[boxstyle,minimum width=2.3cm,minimum height=.7cm,align=center] (f3) at (5.4,0) {``altogether''\\$\Rightarrow$ sum};
+  \node[tealbox,minimum width=2.5cm,minimum height=.62cm,align=center] (c1) at (1.35,1.5) {$n_{\mathrm{May}}=48/2=24$};
+  \node[tealbox,minimum width=2.5cm,minimum height=.62cm,align=center] (c2) at (4.4,1.5) {total $=n_{\mathrm{Apr}}+n_{\mathrm{May}}$};
+  \node[amberbox,minimum width=2.5cm,minimum height=.62cm,align=center] (sol) at (2.9,2.9) {$48+24=72$ clips};
+  \draw[arr] (f1)--(c1);\draw[arr] (f2)--(c1);\draw[arr] (f3)--(c2);
+  \draw[arr] (c1)--(sol);\draw[arr] (c2)--(sol);
+\end{tikzpicture}
+\column{0.44\textwidth}
+\small
+If such objects existed natively, several things should happen at the same places in a trace:
+\begin{itemize}\setlength\itemsep{5pt}
+  \item a meaningful text boundary coincides with a localized latent change
+  \item equivalent computations permit causal transfer
+  \item similar operations have similar representations
+  \item those units help predict correctness
+\end{itemize}
+\end{columns}
+\vfill
+\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
+So the first test is whether one partition of the trace can serve every one of those uses.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Hypothèse de départ: une longue chaîne de pensée suit un objet-solution compact.
+  \item Les feuilles sont des lectures vérifiables de l'énoncé, les n\oe uds internes des opérations.
+  \item Si cet objet existait nativement, plusieurs signaux devraient coïncider aux mêmes endroits.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: is there one utility-neutral partition of a trace?}
+\framesubtitle{Same token gaps, same boundary budget, four objectives}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Do the boundaries that are good for one use of a reasoning trace also serve the others?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small Every trace gets the same number of boundaries, set by its count of verified symbolic updates, so no method can win by cutting more often. Random selection is normalized to 0 and each objective's own oracle to 1.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Four objectives}
+\begin{enumerate}\setlength\itemsep{4pt}
+  \item representation moves toward the gold answer
+  \item a verified symbolic update completes
+  \item a held-out correctness probe changes
+  \item local PCA geometry changes (compression signal)
+\end{enumerate}
+\vspace{0.25cm}
+310{,}044 held-out SmolLM3-3B tokens; 61{,}691 Qwen3-14B tokens
+\end{columns}
+\note{\small\begin{itemize}
+  \item Chaque intervalle entre deux tokens est un candidat frontière.
+  \item Budget de frontières identique pour toutes les méthodes: personne ne gagne en coupant plus.
+  \item Quatre utilités: réponse, mise à jour symbolique, correction, géométrie locale.
+  \item Normalisation: aléatoire = 0, oracle de l'objectif = 1.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Different utilities select different boundaries}
 \framesubtitle{Same token gaps, same boundary budget, four objectives}
 \begin{columns}[T,onlytextwidth]
 \column{0.58\textwidth}
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \foreach \i in {0,...,8}{\draw[Line] (\i*.62,0)--(\i*.62,.28);}
-  \draw[thick,Muted] (0,.14)--(4.96,.14);
-  \node[anchor=east,font=\scriptsize] at (-.2,1.25){answer};
-  \node[anchor=east,font=\scriptsize] at (-.2,.83){symbolic};
-  \node[anchor=east,font=\scriptsize] at (-.2,.41){correctness};
-  \node[anchor=east,font=\scriptsize] at (-.2,-.01){geometry};
-  \foreach \x in {.62,2.48,4.34}{\fill[Teal] (\x,1.25) circle (2.7pt);}
-  \foreach \x in {1.24,3.1,4.96}{\fill[Amber] (\x,.83) circle (2.7pt);}
-  \foreach \x in {.62,1.86,3.72}{\fill[Redish] (\x,.41) circle (2.7pt);}
-  \foreach \x in {1.86,3.1,4.34}{\fill[Muted] (\x,-.01) circle (2.7pt);}
-\end{tikzpicture}
-\vspace{0.3cm}
-\small Supervised detectors recover each target well, but the target-specific oracle partitions barely overlap.
+\includegraphics[width=0.92\linewidth,trim=0bp 0bp 0bp 30bp,clip]{assets/real/objective_matrix.pdf}
+\par\vspace{0.3cm}
+{\small Supervised detectors recover each target well, but the target-specific oracle partitions barely overlap.\par}
 \column{0.38\textwidth}
-\result{\linewidth}{0.098--0.210}\\[-1pt]\centering\small oracle-boundary F1 within $\pm4$ tokens
+\stat{0.098--0.210}{oracle-boundary F1 within $\pm4$ tokens}
 \vspace{0.55cm}
-\result{\linewidth}{0.020}\\[-1pt]\centering\small best worst-objective utility
+\stat{0.020}{best worst-objective utility}
 \vspace{0.45cm}
 \small Primary SmolLM experiment.
 \end{columns}
-\vfill
+\vspace{0.1cm}
 \begin{center}\bfseries Structure is decodable; a utility-independent partition is not.\end{center}
 \tinycite{qian2025peaks,yu2025stateaware,sun2026trajectories}
 \note{\small\begin{itemize}
@@ -748,6 +1081,65 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Decodable, but not one structure}
+\framesubtitle{Regret against each objective's own oracle}
+\begin{columns}[T,onlytextwidth]
+\column{0.52\textwidth}
+\centering
+\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 30bp,clip]{assets/real/regret_matrix.pdf}
+\column{0.44\textwidth}
+\small
+\textbf{Supervised detectors recover their own target}\par
+\vspace{4pt}
+held-out ROC--AUC, SmolLM: {\color{Teal}\bfseries 0.999 / 0.984 / 0.849 / 0.868}\par
+\vspace{2pt}
+Qwen: {\color{Teal}\bfseries 0.998 / 0.992 / 0.859 / 0.825}\par
+\vspace{0.3cm}
+\textbf{But they select different partitions}\par
+\vspace{4pt}
+cross-objective F1 within 4 tokens: 0.098--0.210 (SmolLM), 0.130--0.294 (Qwen)\par
+\vspace{2pt}
+best worst-objective utility: 0.020 (SmolLM), 0.080 (Qwen)
+\end{columns}
+\vspace{0.1cm}
+\begin{center}\begin{minipage}{0.92\textwidth}\centering\bfseries
+Not an absence of latent structure --- an absence of one utility-independent structure.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Les détecteurs supervisés retrouvent très bien leur propre cible: le signal existe.
+  \item Mais le transfert entre objectifs est faible, et aucune règle ne sert les quatre.
+  \item Le projet passe donc de « trouver la partition canonique » à « quel état suffit pour quel usage ».
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Objection: maybe the four objectives missed the semantic steps}
+\framesubtitle{Judged spans as a human-facing control}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Would boundaries that a human reader would call reasoning steps behave differently?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small The labels come from outside our four operational objectives, so agreement or disagreement with them is independent evidence.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{4pt}
+  \item Qwen-110B-A25B as judge over 415 overlapping windows of concise correct SmolLM traces
+  \item nine edit types: orient, bind variable, add relation, derive value, verify, correct error, plan, extract answer, mixed
+  \item after alignment and edge filtering: 1{,}761 spans over 58 traces, median 29 tokens
+  \item latent detector trained question-disjoint
+\end{itemize}
+\end{columns}
+\note{\small\begin{itemize}
+  \item Contrôle contre une objection naturelle sur le choix des objectifs.
+  \item Un grand modèle juge annote neuf types d'édition sur des fenêtres chevauchantes.
+  \item Split question-disjoint: on ne peut pas mémoriser les mêmes problèmes.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Readable semantic spans are decodable too --- but still objective-relative}
 \begin{columns}[T,onlytextwidth]
@@ -760,11 +1152,11 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
   \node[tealbox,below=.2cm of d,minimum width=4.3cm,minimum height=.62cm] (e) {extract answer};
 \end{tikzpicture}
 \column{0.41\textwidth}
-\result{\linewidth}{0.982}\\[-1pt]\centering\small latent boundary AUC
+\stat{0.982}{latent boundary AUC}
 \vspace{0.35cm}
-\result{\linewidth}{0.969}\\[-1pt]\centering\small away from sentence endings
+\stat{0.969}{away from sentence endings}
 \vspace{0.35cm}
-\result{\linewidth}{0.892}\\[-1pt]\centering\small lexical TF--IDF baseline
+\stat{0.892}{lexical TF--IDF baseline}
 \end{columns}
 \vfill
 \small\centering 1,761 judged spans over 58 traces; transfer to the four operational objectives remains weak.
@@ -776,11 +1168,40 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Experiment: is snapshot information the same thing as memory?}
+\framesubtitle{An exact finite control, with no generation or judging noise}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Can two representations carry the same information now and still differ as memories later?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small The hidden-state model, the memory update and the planner are all explicit, so any performance difference is attributable to the representation and its update rule.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{4pt}
+  \item controller observes a short history from a finite hidden state, then decides over a future horizon
+  \item memories: full public history, 12-bit text suffix, 12-bit explicit field state, no memory
+  \item 90 task cells
+  \item matched at the start: same support, $I(S;M)=2.512$ bits, path leakage 1.781 bits
+\end{itemize}
+\end{columns}
+\note{\small\begin{itemize}
+  \item Contrôle fini exact: pas de bruit de génération ni de juge.
+  \item Les représentations partent avec exactement la même information sur l'état.
+  \item Toute différence ultérieure vient donc de la règle de mise à jour.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Snapshot information is not memory}
 \framesubtitle{Exact finite control: same initial information, different update rule}
 \begin{columns}[T,onlytextwidth]
-\column{0.61\textwidth}
+\column{0.98\textwidth}\centering
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[node distance=.3cm]
   \node[tealbox,minimum width=2.8cm,minimum height=.9cm,align=center] (full) {\bfseries full history\\persistent};
   \node[amberbox,below=.55cm of full,minimum width=2.8cm,minimum height=.9cm,align=center] (suf) {\bfseries 12-bit suffix\\drops old observations};
@@ -788,11 +1209,7 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
   \draw[arr] (full)--(same);\draw[arr] (suf)--(same);
   \node[tealbox,right=.8cm of same,minimum width=2.2cm,minimum height=.9cm,align=center] (future) {future control\\horizon $H$};
   \draw[arr] (same)--(future);
-\end{tikzpicture}
-\column{0.35\textwidth}
-\result{\linewidth}{2.20}\\[-1pt]\centering\small regret at $H=32$, full history
-\vspace{0.4cm}
-\result{\linewidth}{30.91}\\[-1pt]\centering\small regret at $H=32$, suffix
+\end{tikzpicture}}
 \end{columns}
 \vfill
 \begin{center}\bfseries A reusable state must be sufficient \emph{and remain sufficient after updates}.\end{center}
@@ -805,21 +1222,80 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Equal snapshot information, unequal memory}
+\framesubtitle{Exact closed-loop regret over the continuation horizon}
+\begin{columns}[T,onlytextwidth]
+\column{0.60\textwidth}
+\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 24bp,clip]{assets/real/closed_loop_regret.pdf}
+\column{0.36\textwidth}
+\vspace{0.3cm}
+\stat{$7.19\times$}{pooled regret, suffix vs.\ full history}
+\vspace{0.3cm}
+\small
+\begin{itemize}\setlength\itemsep{5pt}
+  \item at $H=32$: {\color{Teal}\bfseries 2.20} full history, {\color{Teal}\bfseries 30.91} suffix
+  \item regret removed vs.\ no memory: 93.7\% full history, 79.3\% field state, 54.8\% suffix
+\end{itemize}
+\end{columns}
+\vspace{0.1cm}
+\begin{center}\begin{minipage}{0.92\textwidth}\centering\bfseries
+Matched initial capacity rules out capacity: the gap appears only as the memories are updated.
+\end{minipage}\end{center}
+\note{\small\begin{itemize}
+  \item Même support initial, même information mutuelle, et pourtant jamais le même regret.
+  \item À l'horizon 32: 2.20 pour l'historique complet contre 30.91 pour le suffixe.
+  \item L'état explicite 12 bits fait beaucoup mieux que le suffixe, sans égaler l'historique.
+  \item Le suffixe échoue parce qu'il oublie les observations anciennes au fil des mises à jour.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: can a frozen model route its own state?}
+\framesubtitle{Synthetic addition task where the needed intermediate state is known exactly}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Is failure at multi-step composition a failure to \emph{infer} the state, or a failure to \emph{use} it?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small A short program leads to one of eight three-bit states and a separate table maps that state to the answer, so reading, updating, inferring and using the state can each be scored separately.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Four abilities tested separately}
+\begin{enumerate}\setlength\itemsep{4pt}
+  \item read a supplied state
+  \item apply a local update
+  \item infer the endpoint of a history
+  \item use that inferred endpoint in the final lookup
+\end{enumerate}
+\vspace{0.25cm}
+frozen Qwen2.5-32B; eight-state chance level is 12.5\%
+\end{columns}
+\note{\small\begin{itemize}
+  \item Tâche synthétique où l'état intermédiaire nécessaire est connu exactement.
+  \item On sépare quatre capacités: lire, mettre à jour, inférer, puis utiliser l'état inféré.
+  \item Le niveau de chance est 12.5\% avec huit états.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Explicit handoff restores composition}
 \framesubtitle{Controlled eight-state program with frozen Qwen2.5-32B}
-\begin{columns}[T,onlytextwidth]
-\column{0.58\textwidth}
+\begin{center}
 \begin{tikzpicture}[node distance=.33cm]
-  \node[boxstyle,minimum width=2.35cm,minimum height=.9cm,align=center] (hist) {program history};
-  \node[amberbox,right=.55cm of hist,minimum width=2.2cm,minimum height=.9cm,align=center] (infer) {infer endpoint\\state $\hat s$};
-  \node[tealbox,right=.55cm of infer,minimum width=2.2cm,minimum height=.9cm,align=center] (look) {lookup\\answer};
+  \node[boxstyle,minimum width=2.6cm,minimum height=.9cm,align=center] (hist) {program history};
+  \node[amberbox,right=.8cm of hist,minimum width=2.5cm,minimum height=.9cm,align=center] (infer) {infer endpoint\\state $\hat s$};
+  \node[tealbox,right=.8cm of infer,minimum width=2.5cm,minimum height=.9cm,align=center] (look) {lookup\\answer};
   \draw[arr] (hist)--(infer);\draw[arr] (infer)--(look);
-  \node[below=.65cm of infer,align=center,font=\scriptsize,text=Muted] (fresh) {delete history\\fresh model call};
+  \node[below=.95cm of infer,align=center,font=\scriptsize,text=Muted] (fresh) {delete history\\fresh model call};
   \draw[-{Latex[length=2mm]},draw=Teal,line width=1.1pt] (infer.south)--(fresh.north);
   \draw[-{Latex[length=2mm]},draw=Teal,line width=1.1pt] (fresh.east) -| (look.south);
 \end{tikzpicture}
-\column{0.38\textwidth}
+\end{center}
+\vspace{0.45cm}
+\begin{center}
+\small
 \begin{tabular}{lr}
 \toprule
 assay & accuracy\\\midrule
@@ -829,7 +1305,7 @@ explicit handoff & 76.98\%\\
 correct endpoint given & 100\%\\
 \bottomrule
 \end{tabular}
-\end{columns}
+\end{center}
 \vfill
 \begin{center}\bfseries The missing ingredient can be routing/composition, not missing state information.\end{center}
 \note{\small\begin{itemize}
@@ -841,17 +1317,44 @@ correct endpoint given & 100\%\\
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{Experiment: what makes a supplied interface work?}
+\framesubtitle{Finite proof task, four code designs at equal data and compute}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Is enough capacity sufficient for a reusable state code, or does the naming matter too?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small At each step the previous rules are discarded and only the state code is passed on, so the experiment succeeds only if the code itself carries the state.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Four codes, one four-bit fact ledger (16 states)}
+\begin{itemize}\setlength\itemsep{4pt}
+  \item \key{3-bit lossy}: must merge some states
+  \item \key{4-bit canonical}: one stable name per state
+  \item \key{5-bit padded}: unused capacity, still one name
+  \item \key{5-bit path-aliased}: same state, two names depending on the path
+\end{itemize}
+\vspace{0.2cm}
+the last pair isolates capacity from naming
+\end{columns}
+\note{\small\begin{itemize}
+  \item Tâche de preuve finie: un registre de quatre faits, donc seize états.
+  \item À chaque étape, seules les règles courantes et le code d'état sont transmis.
+  \item Les quatre codes séparent capacité insuffisante, capacité en excès et nommage instable.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Capacity and stable names are separate requirements}
 \begin{columns}[T,onlytextwidth]
 \column{0.55\textwidth}
-\begin{tikzpicture}[node distance=.28cm]
-  \node[boxstyle,minimum width=2.1cm,minimum height=.8cm,align=center] (s) {16 states\\need $\ge4$ bits};
-  \node[tealbox,right=.55cm of s,minimum width=2.25cm,minimum height=.8cm,align=center] (can) {4-bit canonical\\one name/state};
-  \node[tealbox,below=.45cm of can,minimum width=2.25cm,minimum height=.8cm,align=center] (pad) {5-bit padded\\same semantics};
-  \node[amberbox,below=.45cm of pad,minimum width=2.25cm,minimum height=.8cm,align=center] (alias) {5-bit path-aliased\\multiple names/state};
-  \draw[arr] (s)--(can);\draw[arr] (s.east) -- ++(.25,0) |- (pad.west);\draw[arr] (s.east) -- ++(.25,0) |- (alias.west);
-\end{tikzpicture}
+\vspace{0.2cm}
+\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 20bp,clip]{assets/real/rate_sufficiency.pdf}\par
+\vspace{0.1cm}
+{\footnotesize canonical interface 97.22\% vs.\ 72.22\% one-pass reasoning; paired gain 25 points, CI $[12.50,38.89]$\par}
 \column{0.41\textwidth}
 \small
 \begin{itemize}\setlength\itemsep{7pt}
@@ -876,17 +1379,12 @@ correct endpoint given & 100\%\\
 \begin{frame}{Local competence can collapse under recursive use}
 \begin{columns}[T,onlytextwidth]
 \column{0.60\textwidth}
-\begin{tikzpicture}
-  \node[tealbox,minimum width=2.1cm,minimum height=.82cm] (s0) {$\hat s_t$};
-  \node[boxstyle,right=.55cm of s0,minimum width=2.1cm,minimum height=.82cm] (f) {$f(\hat s_t,x_{t+1})$};
-  \node[amberbox,right=.55cm of f,minimum width=2.1cm,minimum height=.82cm] (s1) {$\hat s_{t+1}$};
-  \draw[arr] (s0)--(f);\draw[arr] (f)--(s1);
-  \draw[-{Latex[length=2mm]},draw=Amber,line width=1.0pt] (s1.south) to[out=-90,in=-90,looseness=1.2] node[below,font=\scriptsize,text=Amber]{feed prediction back} (s0.south);
-\end{tikzpicture}
+\vspace{0.25cm}
+\includegraphics[width=0.96\linewidth]{assets/real/06_local_global_reliability.pdf}
 \column{0.36\textwidth}
-\result{\linewidth}{$\approx89\%$}\\[-1pt]\centering\small correct local transitions
+\stat{$\approx89\%$}{correct local transitions}
 \vspace{0.45cm}
-\result{\linewidth}{7.92\%}\\[-1pt]\centering\small correct final answer at $H=32$
+\stat{7.92\%}{correct final answer at $H=32$}
 \end{columns}
 \vfill
 \begin{center}\small Chance: 6.25\% · one-pass reasoning: 5.83\%\end{center}
@@ -900,25 +1398,67 @@ correct endpoint given & 100\%\\
 \end{itemize}}
 \end{frame}
 
+\begin{frame}{The present limit of the interface approach}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\begin{block}{What the gap separates}
+\small Local transition competence, scored from the state actually supplied at each call, from accumulated reliability under self-conditioned use.
+\end{block}
+\column{0.48\textwidth}
+\begin{block}{What was ruled out as a fix}
+\small The pattern was not model-dependent, and adding a fifth code bit did not repair it.
+\end{block}
+\end{columns}
+\vfill
+\begin{center}\begin{minipage}{0.92\textwidth}\centering\bfseries
+A transition function that is 89\% correct in one step is not reliable enough for dozens of recursive uses --- a horizon reasoning models reach easily.
+\end{minipage}\end{center}
+\vspace{0.2cm}
+\begin{center}\small Long-horizon reliability has to be measured under self-conditioned use, not inferred from gold-input one-step accuracy.\end{center}
+\note{\small\begin{itemize}
+  \item C'est la limite actuelle de l'approche par interface explicite.
+  \item Ni le choix du modèle ni un bit de code supplémentaire ne réparent le problème.
+  \item Les petites erreurs sémantiques se composent jusqu'à rendre l'état inutilisable.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
+\begin{frame}{Experiment: do reasoning and answer cost the same to write?}
+\framesubtitle{The first bridge between the two parts}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+\begin{block}{Question}
+Within one adapter, does the reasoning chain require more update information than the final answer?
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Why this design answers it}
+\small Same corpus, same codec ladder and same rate axis as Part I; only the supervised span and the frozen receiver change.
+\end{block}
+\column{0.46\textwidth}
+\small
+\textbf{Setup}
+\begin{itemize}\setlength\itemsep{4pt}
+  \item rank-16 all-linear LoRA on MetaMathQA
+  \item two frozen NF4 backbones: Mistral-7B, Qwen2.5-7B
+  \item three supervisions: full response, reasoning span only, answer span only
+  \item scored separately on reasoning and answer spans
+\end{itemize}
+\vspace{0.2cm}
+$R^{\star}_{M,U}(\tau)=\min_A R(A)$ s.t.\ $W_{M,U}(A)\ge\tau W_{M,U}(A_{\mathrm{raw}})$
+\end{columns}
+\note{\small\begin{itemize}
+  \item Même protocole de compression que la partie I, appliqué à des spans différents.
+  \item Trois supervisions: réponse complète, raisonnement seul, réponse finale seule.
+  \item Le taux est mesuré séparément pour chaque utilité de span.
+\end{itemize}}
+\end{frame}
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{The two axes meet: even reasoning-vs-answer rate is receiver-dependent}
 \framesubtitle{Same MetaMathQA adapters; same codec; two utilities}
 \begin{columns}[T,onlytextwidth]
 \column{0.62\textwidth}
-\begin{tikzpicture}
-\begin{axis}[
-  ybar,bar width=15pt,width=7.4cm,height=4.5cm,
-  symbolic x coords={Mistral,Qwen},xtick=data,
-  ymin=0,ymax=1.2,ylabel={$R^*(0.90)$ [bits/value]},
-  axis line style={draw=Muted},tick style={draw=Muted},
-  ticklabel style={font=\scriptsize},label style={font=\scriptsize},
-  legend style={font=\scriptsize,draw=none,at={(.5,-.16)},anchor=north,legend columns=2},
-  grid=major,grid style={Line!55}]
-  \addplot[fill=Amber!78,draw=Amber] coordinates{(Mistral,1.070)(Qwen,.471)};
-  \addplot[fill=Teal!78,draw=Teal] coordinates{(Mistral,.578)(Qwen,.575)};
-  \legend{reasoning tokens,answer tokens}
-\end{axis}
-\end{tikzpicture}
+\vspace{0.05cm}
+\includegraphics[width=0.80\linewidth,trim=0bp 0bp 348bp 20bp,clip]{assets/real/cot_finetuning_limits.pdf}
 \column{0.34\textwidth}
 \small
 \textbf{Ordering reverses}
@@ -929,7 +1469,7 @@ correct endpoint given & 100\%\\
   \item answer rates almost match
 \end{itemize}
 \end{columns}
-\vfill
+\vspace{0.15cm}
 \begin{center}\bfseries Utility and receiver jointly define the update information we measure.\end{center}
 \note{\small\begin{itemize}
   \item Connexion directe entre les deux axes: même protocole de compression d'adapter, mais scoring séparé des tokens de reasoning et de réponse.
@@ -994,36 +1534,16 @@ correct endpoint given & 100\%\\
   \end{itemize}}
 \end{frame}
 
+
 % -----------------------------------------------------------------------------
 \begin{frame}[allowframebreaks]{References used in the presentation}
-\scriptsize
 \printbibliography[heading=none]
-\note{\small Références uniquement issues de la bibliographie du rapport initial.}
 \end{frame}
 
 % ============================== BACKUP =======================================
 \appendix
-\begin{frame}{Backup: exact finite-control memory result}
-\framesubtitle{Equal snapshot statistics do not imply equal closed-loop quality}
-\begin{tikzpicture}
-\begin{axis}[
-  width=10.0cm,height=5.0cm,
-  xlabel={horizon},ylabel={regret},xmin=1,xmax=32,ymin=0,ymax=34,
-  axis line style={draw=Muted},tick style={draw=Muted},
-  ticklabel style={font=\scriptsize},label style={font=\scriptsize},
-  grid=major,grid style={Line!55},legend style={font=\scriptsize,draw=none,at={(.5,-.18)},anchor=north,legend columns=2}]
-  \addplot[thick,Teal,mark=*] coordinates{(1,.2)(4,.5)(8,.8)(16,1.4)(32,2.20)};
-  \addplot[thick,Amber,mark=square*] coordinates{(1,.2)(4,3.8)(8,8.9)(16,17.0)(32,30.91)};
-  \legend{full history,12-bit suffix}
-\end{axis}
-\end{tikzpicture}
-\note{\small\begin{itemize}
-  \item Contrôle fini exact, pas une expérience LLM.
-  \item Même information initiale; la différence vient de la règle d'update.
-  \item À $H=32$: regret 2.20 contre 30.91.
-\end{itemize}}
-\end{frame}
 
+% -----------------------------------------------------------------------------
 \begin{frame}{Backup: codec contract}
 \begin{columns}[T,onlytextwidth]
 \column{0.48\textwidth}

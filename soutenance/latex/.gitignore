@@ -1,0 +1,8 @@
+# Beamer navigation/notes artifacts not covered by the repository-wide ignores
+*.nav
+*.snm
+*.vrb
+
+# Built decks; rebuild with `make`
+soutenance.pdf
+soutenance-notes.pdf
