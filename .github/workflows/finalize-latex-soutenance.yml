@@ -27,38 +27,49 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --quiet --upgrade pip
-          python -m pip install --quiet numpy matplotlib pymupdf
+          python -m pip install --quiet numpy matplotlib pymupdf pillow
 
-      - name: Generate thesis-derived figures and explanatory diagrams
+      - name: Generate thesis-derived figures and final slide assets
         shell: bash
         run: |
           set -euo pipefail
           cd soutenance/latex
           python generate_assets.py
 
-          # The expanded source intentionally requests these stable slide-facing names.
-          # Canonical paper figures fetched by the materializer take precedence for
-          # Transformer / LoRA / QLoRA; deterministic assets cover quantization and report figures.
+          # Canonical figures from papers already cited in the thesis.
           cp assets/transformer_vaswani_fig1.png assets/transformer_original.png
           cp assets/lora_hu_fig1.png assets/lora_original.png
           cp assets/qlora_dettmers_fig1.png assets/qlora_original.png
-          cp assets/quantization_4bit.jpg assets/quantization.png
-          cp assets/fig_rmse.pdf assets/exp_rmse.pdf
-          cp assets/fig_distinct_rate.pdf assets/exp_distinct.pdf
-          cp assets/fig_content_diversity.pdf assets/exp_content.pdf
-          cp assets/fig_known_info.pdf assets/exp_known.pdf
-          cp assets/table_model_rate.pdf assets/exp_model_rate.pdf
-          cp assets/fig_diversity_replication.pdf assets/exp_diversity.pdf
-          cp assets/table_predictors.pdf assets/exp_predictors.pdf
-          cp assets/fig_container_controls.pdf assets/exp_container.pdf
-          cp assets/fig_solution_object.pdf assets/solution_object.pdf
-          cp assets/fig_objective_matrices.pdf assets/objective_matrices.pdf
-          cp assets/fig_closed_loop_regret.pdf assets/closed_loop_regret.pdf
-          cp assets/fig_native_handoff.pdf assets/native_handoff.pdf
-          cp assets/fig_state_rate.pdf assets/state_rate.pdf
-          cp assets/fig_surface_depth.pdf assets/surface_depth.pdf
-          cp assets/fig_recursive_reliability.pdf assets/recursive_reliability.pdf
-          cp assets/fig_reasoning_answer_rate.pdf assets/reasoning_answer_rate.pdf
+
+          # Convert deterministic / thesis-derived assets to the exact names used by main.tex.
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import pymupdf
+
+          A = Path('assets')
+          Image.open(A/'quantization_4bit.jpg').save(A/'quantization.png')
+          mapping = {
+              'fig_rmse.pdf':'exp_rmse.png',
+              'fig_distinct_rate.pdf':'exp_distinct.png',
+              'fig_content_diversity.pdf':'exp_content.png',
+              'fig_known_info.pdf':'exp_known.png',
+              'fig_diversity_replication.pdf':'exp_diversity.png',
+              'fig_objective_matrices.pdf':'exp_objectives.png',
+              'fig_closed_loop_regret.pdf':'exp_closed_loop.png',
+              'fig_native_handoff.pdf':'exp_native.png',
+              'fig_state_rate.pdf':'exp_state_rate.png',
+              'fig_surface_depth.pdf':'exp_depth.png',
+              'fig_recursive_reliability.pdf':'exp_recursive.png',
+              'fig_reasoning_answer_rate.pdf':'exp_cot_rate.png',
+              'fig_container_controls.pdf':'exp_rank_location.png',
+          }
+          for src,dst in mapping.items():
+              doc=pymupdf.open(A/src)
+              pix=doc[0].get_pixmap(matrix=pymupdf.Matrix(2.2,2.2),alpha=False)
+              pix.save(A/dst)
+              doc.close()
+          PY
 
       - name: Check every image reference resolves
         shell: bash
@@ -81,11 +92,9 @@ jobs:
                       candidates.extend(base/(str(p)+ext) for ext in ['.pdf','.png','.jpg','.jpeg'])
               if not any(c.exists() for c in candidates):
                   missing.append(ref)
-          print('includegraphics refs:', len(refs))
-          print('unique refs:', len(set(refs)))
+          print('includegraphics refs:', len(refs), 'unique:', len(set(refs)))
           if missing:
-              print('MISSING:')
-              print('\n'.join(sorted(set(missing))))
+              print('MISSING:\n'+'\n'.join(sorted(set(missing))))
               raise SystemExit(1)
           print('All image references resolve.')
           PY
@@ -116,7 +125,6 @@ jobs:
           cd soutenance/latex
           echo '--- box warnings ---'
           grep -E 'Overfull \\hbox|Overfull \\vbox' soutenance.log || true
-          # Beamer sometimes emits tiny harmless hbox warnings. Fail only for >= 8pt.
           python - <<'PY'
           from pathlib import Path
           import re
@@ -128,7 +136,7 @@ jobs:
               raise SystemExit(f'Serious overflow detected: {max(vals)}pt')
           PY
 
-      - name: Render contact sheets for visual QA
+      - name: Render contact sheet for visual QA
         shell: bash
         run: |
           set -euo pipefail
