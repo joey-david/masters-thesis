@@ -131,7 +131,7 @@
 \column{0.48\textwidth}
 \begin{tikzpicture}
   \node[tealbox,minimum width=\linewidth,minimum height=1.35cm,align=center] (a) {\large\bfseries Fine-tuning\\[2pt]\normalsize relative information to a base model};
-  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {What \textbf{relative information} to a \textbf{base model} must an \textbf{adapter} carry for it to \key{\textbf{learn a dataset}}?.};
+  \node[below=0.4cm of a,align=center,text width=.93\linewidth] {What \textbf{relative information} to a \textbf{base model} must an \textbf{adapter} carry for it to \key{\textbf{learn a dataset}}?};
 \end{tikzpicture}
 \column{0.48\textwidth}
 \begin{tikzpicture}
@@ -487,7 +487,7 @@ R=\frac{8\times\text{file bytes}}{P}
 At a matched file size, does spending bits where reconstruction is hardest preserve more behavior than uniform precision?
 \end{block}
 \vspace{0.25cm}
-\begin{block}{Why this design answers it}
+\begin{block}{Experiment Design}
 \small The adapter checkpoint is fixed, so the two codecs differ only in allocation. Any difference in retained gain is attributable to where the bits went.
 \end{block}
 \column{0.46\textwidth}
@@ -541,7 +541,7 @@ At a matched file size, does spending bits where reconstruction is hardest prese
 \end{columns}
 \vfill
 \begin{center}\begin{minipage}{0.88\textwidth}\centering\bfseries
-The question shifts from \emph{where} to spend a fixed budget to what determines how large the required budget is.
+  Rather than \emph{where} to spend a fixed budget, we can focus on \emph{what} determines how large the required budget is.
 \end{minipage}\end{center}
 \note{\small\begin{itemize}
   \item Conclusion scientifique: la norme dans l'espace des poids ne suffit pas comme distortion.
@@ -550,15 +550,14 @@ The question shifts from \emph{where} to spend a fixed budget to what determines
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
-\begin{frame}{Experiment: does more distinct data cost more bits?}
-\framesubtitle{Compute-matched distinct-example panel}
+\begin{frame}{Does more distinct data cost more bits?}
 \begin{columns}[T,onlytextwidth]
 \column{0.46\textwidth}
 \begin{block}{Question}
-Does the required rate grow with the amount of distinct training data, at fixed training exposure?
+Based on a simple compression intuition, does the required rate indeed grow with the amount of distinct training data, at fixed training exposure?
 \end{block}
 \vspace{0.25cm}
-\begin{block}{Why this design answers it}
+\begin{block}{Experiment Design}
 \small Holding both optimizer steps and total presentations fixed removes the pilot confound: only the number of distinct rows changes.
 \end{block}
 \column{0.46\textwidth}
@@ -581,8 +580,7 @@ Does the required rate grow with the amount of distinct training data, at fixed 
 \end{frame}
 % -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
-\begin{frame}{More distinct content generally requires more adapter rate}
-\framesubtitle{Compute-matched MetaMathQA pilot: 15 runs}
+\begin{frame}{Does more distinct data cost more bits? Yes, but not perfectly.}
 \begin{columns}[T,onlytextwidth]
 \column{0.62\textwidth}
 \vspace{0.15cm}
@@ -608,17 +606,16 @@ Does the required rate grow with the amount of distinct training data, at fixed 
 \end{frame}
 
 \begin{frame}{Distinct rows or distinct content?}
-\framesubtitle{Two controls behind the same trend}
 \begin{center}
 \includegraphics[width=0.76\textwidth,trim=0bp 0bp 0bp 8bp,clip]{assets/real/content_and_rows.pdf}
 \end{center}
 \vspace{0.1cm}
 {\centering\small
 left: {\bfseries\color{Teal}$0.682\to0.742$} bits per value as source problems grow behind a fixed 8{,}000-row corpus \; · \;
-right: row count moves the budget too, six seeds\par}
+right: row count moves the budget too\par}
 \vspace{0.15cm}
 \begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
-Content diversity, not just row count, moves the required rate --- but more diverse data also improved the model more.
+Content diversity, not just row count, moves the required rate, but more diverse data also improved the model more.
 \end{minipage}\end{center}
 \note{\small\begin{itemize}
   \item Contrôle gauche: 8 000 exemples fixes, on fait varier le nombre de problèmes sources.
@@ -628,45 +625,11 @@ Content diversity, not just row count, moves the required rate --- but more dive
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
-\begin{frame}{Is the rate just a function of how much was learned?}
-\framesubtitle{Two controls that vary learned gain on purpose}
-\begin{columns}[T,onlytextwidth]
-\column{0.50\textwidth}
-\begin{block}{Style rewrites}
-\small Same answers rewritten in five deterministic styles, from short plain responses to symbolic ones.
-\end{block}
-\vspace{0.2cm}
-\small
-learned gain \quad {\color{Teal}\bfseries $0.555\to1.062$} bits/token\par
-\vspace{2pt}
-required rate \quad {\color{Teal}\bfseries $0.684\to0.763$} bits/value
-\column{0.44\textwidth}
-\begin{block}{Optimizer-budget sweep}
-\small A separate 16-fold sweep changes how much is learned while the data content stays fixed.
-\end{block}
-\vspace{0.2cm}
-\small Again no matching rate increase.
-\vspace{0.35cm}
-\par\small Earlier math runs had suggested the opposite: over 48 rank-16 runs, held-out gain explained 56\% of the variance in $R^*$ --- but over a narrow range of gains.
-\end{columns}
-\vfill
-\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
-Nearly doubling the learned behavior barely moves the required rate: improvement alone does not determine it.
-\end{minipage}\end{center}
-\note{\small\begin{itemize}
-  \item Deux façons différentes de faire varier le gain appris, à contenu constant.
-  \item Les réécritures de style doublent presque le gain, mais R* bouge à peine.
-  \item Le sweep d'optimisation ne produit pas non plus l'augmentation attendue.
-  \item Ensemble, ils éliminent le gain comportemental seul comme déterminant du taux.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-\begin{frame}{Control: a task whose source information we know by construction}
-\framesubtitle{An uncalibrated proxy is ruled out --- but source bits still do not explain adapter rate}
+\begin{frame}{Control: known-source-information synthetic task}
 \begin{columns}[T,onlytextwidth]
 \column{0.42\textwidth}
 \begin{block}{Question}
-\small Is our information proxy calibrated at all, when the true number of source bits is known?
+\small Trying to aim for scaling laws, can we calibrate a proxy?
 \end{block}
 \vspace{0.15cm}
 \small
@@ -689,132 +652,7 @@ Nearly doubling the learned behavior barely moves the required rate: improvement
   \item Mais cela n'explique toujours pas le taux d'adapter.
 \end{itemize}}
 \end{frame}
-% -----------------------------------------------------------------------------
-\begin{frame}{Experiment: does a dataset have one intrinsic adapter cost?}
-\framesubtitle{Change the receiver, keep everything else fixed}
-\begin{columns}[T,onlytextwidth]
-\column{0.46\textwidth}
-\begin{block}{Question}
-If cost were a property of the corpus, its ordering across corpora should survive a change of frozen model.
-\end{block}
-\vspace{0.25cm}
-\begin{block}{Why this design answers it}
-\small Changing the frozen model is a direct change of receiver, with the dataset, rank, epochs and codec held fixed. A reversal in ordering falsifies intrinsic cost outright.
-\end{block}
-\column{0.46\textwidth}
-\small
-\textbf{Setup}
-\begin{itemize}\setlength\itemsep{5pt}
-  \item five corpora: instruction, summarization, math, code, dialogue
-  \item two frozen receivers: Mistral-7B and Qwen2.5-7B
-  \item same LoRA rank, example count, epochs and codec
-  \item 3 independently trained adapters per cell, 30 rate curves
-\end{itemize}
-\vspace{0.25cm}
-\chip{prediction} ordering is preserved if cost is intrinsic
-\end{columns}
-\note{\small\begin{itemize}
-  \item Test direct de la dépendance au receveur: on ne change que le modèle gelé.
-  \item Cinq corpus, deux modèles, tout le reste identique, trois graines par cellule.
-  \item Si le coût était intrinsèque au dataset, l'ordre des corpus devrait être conservé.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-% -----------------------------------------------------------------------------
-\begin{frame}{The same dataset has a different cost for a different base model}
-\framesubtitle{$R^*(0.90)$ in bits per original adapter value; 3 seeds per cell}
-\begin{columns}[T,onlytextwidth]
-\column{0.67\textwidth}
-\begin{tikzpicture}
-\begin{axis}[
-  xbar,bar width=6pt,width=8.2cm,height=4.8cm,
-  symbolic y coords={Dialogue,Code,Math,Summarization,Instruction},ytick=data,
-  xmin=0,xmax=1.3,
-  axis line style={draw=Muted},tick style={draw=Muted},
-  ticklabel style={font=\scriptsize},label style={font=\scriptsize},
-  xlabel={$R^*(0.90)$},
-  legend style={font=\scriptsize,draw=none,at={(.5,-.30)},anchor=north,legend columns=2},
-  grid=major,grid style={Line!55}]
-  \addplot[fill=Teal!78,draw=Teal] coordinates{(.913,Dialogue)(.891,Code)(.737,Math)(.652,Summarization)(.643,Instruction)};
-  \addplot[fill=Amber!78,draw=Amber] coordinates{(1.176,Dialogue)(.668,Code)(.411,Math)(.388,Summarization)(.774,Instruction)};
-  \legend{Mistral-7B,Qwen2.5-7B}
-\end{axis}
-\end{tikzpicture}
-\column{0.29\textwidth}
-\vspace{0.45cm}
-\small
-\textbf{Ordering reverses.}
-\vspace{0.25cm}
-\begin{itemize}\setlength\itemsep{7pt}
-  \item summarization: $0.652\to0.388$
-  \item instruction: $0.643\to0.774$
-  \item dialogue remains expensive
-\end{itemize}
-\end{columns}
-\vfill
-\begin{center}\bfseries Dataset ``information'' is relative to the model that must absorb it.\end{center}
-\note{\small\begin{itemize}
-  \item Test direct du caractère relatif au récepteur: mêmes cinq corpus, même protocole, deux base models.
-  \item L'ordre des coûts change fortement entre Mistral et Qwen.
-  \item Donc un dataset n'impose pas un coût d'adapter intrinsèque.
-  \item Cette expérience motive de regarder ce que le dataset demande spécifiquement à chaque modèle de corriger.
-\end{itemize}}
-\end{frame}
 
-\begin{frame}{Replicating the diversity effect on two structured tasks}
-\framesubtitle{Fixed example count; only the number of domains or companies changes}
-\begin{center}
-\includegraphics[width=0.84\textwidth,trim=0bp 0bp 0bp 10bp,clip]{assets/real/diversity_replication.pdf}
-\end{center}
-\vspace{0.1cm}
-\begin{columns}[T,onlytextwidth]
-\column{0.46\textwidth}
-\small XBRL moves in the same direction in all six matched model--seed comparisons.
-\column{0.46\textwidth}
-\small SQL changes much less, and inconsistently across seeds.
-\end{columns}
-\vspace{0.15cm}
-\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
-Content diversity matters in some tasks and not others --- so it is not the underlying quantity either.
-\end{minipage}\end{center}
-\note{\small\begin{itemize}
-  \item On garde le nombre d'exemples fixe et on fait varier le nombre de domaines ou d'entreprises.
-  \item XBRL: même direction dans les six comparaisons appariées modèle-graine.
-  \item SQL: effet faible et instable selon les graines.
-  \item L'intervention XBRL n'est pas parfaitement propre: la couverture du support change aussi.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-\begin{frame}{Experiment: what does the dataset ask \emph{this} model to correct?}
-\framesubtitle{A model-relative candidate, screened against ten alternatives}
-\begin{columns}[T,onlytextwidth]
-\column{0.48\textwidth}
-\begin{block}{Question}
-Can a quantity computed on the frozen model, before training, order the required adapter rate?
-\end{block}
-\vspace{0.2cm}
-\small
-For a scored token the output-head gradient factorizes as $g_{it}=h_{it}\otimes(p_{it}-e_{y_{it}})$: what the model is representing, times how its prediction must change.
-\column{0.46\textwidth}
-\small
-\textbf{Screen}
-\begin{itemize}\setlength\itemsep{5pt}
-  \item 22 distinct model--dataset conditions, 7 task families, 2 frozen 7B receivers
-  \item ranked by within-model $\rho$ and by RMSE on a held-out task family
-  \item permutation test corrected for screening ten candidate measures
-\end{itemize}
-\end{columns}
-\vfill
-\begin{center}\begin{minipage}{0.9\textwidth}\centering
-\small $I_{\mathrm{corr}}(D;M)=\log\det(I+F)=\sum_j\log(1+\lambda_j(F))$ \quad grows with large corrections spread over many independent directions
-\end{minipage}\end{center}
-\note{\small\begin{itemize}
-  \item L'idée: mesurer les corrections que le dataset demande à ce modèle gelé précis.
-  \item Le gradient de la tête de sortie se factorise en état caché et erreur de prédiction.
-  \item Dix mesures candidates ont été screenées: le test de permutation en tient compte.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{A model-relative predictor: the correction spectrum}
 \begin{columns}[T,onlytextwidth]
@@ -822,11 +660,11 @@ For a scored token the output-head gradient factorizes as $g_{it}=h_{it}\otimes(
 \begin{tikzpicture}[node distance=.35cm]
   \node[boxstyle,minimum width=2.2cm,minimum height=.9cm,align=center] (h) {hidden state\\$h_{it}$};
   \node[boxstyle,right=.5cm of h,minimum width=2.2cm,minimum height=.9cm,align=center] (e) {prediction error\\$p_{it}-e_y$};
-  \node[tealbox,below=.65cm of $(h)!0.5!(e)$,minimum width=3.0cm,minimum height=.95cm,align=center] (g) {token correction\\$g_{it}\approx h_{it}\otimes(p_{it}-e_y)$};
+  \node[tealbox,below=1.15cm of $(h)!0.5!(e)$,minimum width=3.0cm,minimum height=.95cm,align=center] (g) {token correction\\$g_{it}\approx h_{it}\otimes(p_{it}-e_y)$};
   \draw[arr] (h)--(g);\draw[arr] (e)--(g);
-  \node[amberbox,below=.65cm of g,minimum width=3.0cm,minimum height=.95cm,align=center] (S) {second moment\\eigenvalues $\lambda_j$};
+  \node[amberbox,below=1.0cm of g,minimum width=3.0cm,minimum height=.95cm,align=center] (S) {second moment\\eigenvalues $\lambda_j$};
   \draw[arr] (g)--(S);
-  \node[below=.45cm of S,align=center,font=\small] {$I_{corr}=\sum_j\log(1+\lambda_j)$};
+  \node[below=.8cm of S,align=center,font=\small] {$I_{corr}=\sum_j\log(1+\lambda_j)$};
 \end{tikzpicture}
 \column{0.40\textwidth}
 \vspace{0.35cm}
@@ -840,7 +678,6 @@ Large corrections in many independent directions tend to require a larger behavi
 \end{block}
 \end{columns}
 \vfill
-\begin{center}\small\color{Muted}Promising campaign-level predictor; prospective validation still required.\end{center}
 \note{\small\begin{itemize}
   \item Puisque le coût dépend du modèle, on regarde les corrections que chaque dataset demande à ce modèle.
   \item Le gradient token se factorise approximativement en état caché fois erreur de prédiction.
@@ -851,7 +688,6 @@ Large corrections in many independent directions tend to require a larger behavi
 \end{frame}
 
 \begin{frame}{Screening ten model-relative measures}
-\framesubtitle{Ranking $R^*(0.90)$ within a model, and predicting a held-out task family}
 \begin{center}\small
 \setlength{\tabcolsep}{6pt}
 \begin{tabular}{lrrrr}
@@ -868,10 +704,8 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \end{center}
 \vspace{0.25cm}
 \begin{columns}[T,onlytextwidth]
-\column{0.48\textwidth}
-\small It follows the SQL/XBRL contrast: flat on SQL, rising on XBRL for both receivers.
-\column{0.48\textwidth}
-\small It is not learning gain under another name: correction log-volume and held-out gain correlate at $\rho=-0.275$.
+\column{0.96\textwidth}
+\small Correction log-volume and held-out gain correlate at $\rho=-0.275$, so this is not just a proxy for gain.
 \end{columns}
 \note{\small\begin{itemize}
   \item Le log-volume de Fisher des corrections est notre meilleur prédicteur actuel.
@@ -880,6 +714,43 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
+\begin{frame}{Other experiments\ldots}
+\begin{columns}[T,onlytextwidth]
+\column{0.33\textwidth}
+\centering
+\includegraphics[height=2.8cm,trim=0bp 0bp 0bp 39bp,clip]{assets/real/pooled_bits_against_rate.pdf}
+\column{0.33\textwidth}
+\centering
+\includegraphics[height=2.8cm,trim=0bp 0bp 500bp 39bp,clip]{assets/real/where_the_bits_live.pdf}
+\column{0.33\textwidth}
+\centering
+\includegraphics[height=2.8cm,trim=500bp 0bp 0bp 24bp,clip]{assets/real/diversity_replication.pdf}
+\end{columns}
+\vspace{0.35cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.31\textwidth}
+\footnotesize
+\key{Receiver change}\par
+Same five corpora, Mistral-7B vs Qwen2.5-7B: the ordering reverses (summarization $0.652\to0.388$, instruction $0.643\to0.774$). No intrinsic dataset cost.
+\column{0.31\textwidth}
+\footnotesize
+\key{Bit allocation}\par
+At a matched budget, uniform allocation beats every depth placement; starving the late third hurts most. The rate depends on its carrier.
+\column{0.31\textwidth}
+\footnotesize
+\key{Information type}\par
+Style rewrites nearly double it ($0.555\to1.062$ bits/token) while $R^*$ moves only $0.684\to0.763$; a 16-fold optimizer sweep agrees.
+\end{columns}
+\note{\small\begin{itemize}
+  \item Trois interventions supplémentaires, même protocole de taux, résumées ici.
+  \item Changer le receveur: l'ordre des corpus s'inverse entre Mistral et Qwen, donc pas de coût intrinsèque au dataset.
+  \item Déplacer les bits: à budget égal, l'allocation uniforme bat tous les placements en profondeur.
+  \item Faire varier le gain appris: les réécritures de style doublent presque le gain sans bouger le taux.
+  \item La diversité de contenu se réplique sur XBRL mais pas sur SQL: effet réel mais dépendant de la tâche.
+\end{itemize}}
+\end{frame}
+
+% -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Part I: what is established?}
 \begin{columns}[T,onlytextwidth]
@@ -887,7 +758,7 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \begin{block}{Operational definition}
 \small A reloadable, serialized, behavior-based adapter rate relative to a fixed base model.
 \end{block}
-\begin{block}{Negative results}
+\begin{block}{Poor proxies}
 \small Rank, raw dataset size, and weight RMSE are not sufficient notions of useful information.
 \end{block}
 \column{0.49\textwidth}
@@ -899,7 +770,6 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \end{block}
 \end{columns}
 \vfill
-\begin{center}\begin{minipage}{0.78\textwidth}\centering\Large\bfseries Information written by fine-tuning is not in the dataset alone.\end{minipage}\end{center}\vfill
 \note{\small\begin{itemize}
   \item Résumé de la Partie I avant de changer d'objet.
   \item Contribution méthodologique: un taux exact, rechargeable et comportemental.
@@ -914,7 +784,7 @@ Model-only fit & --- & --- & 0.264 & ---\\
   \begin{tikzpicture}[remember picture,overlay]\fill[Dark] (current page.south west) rectangle (current page.north east);\end{tikzpicture}
   \vspace{1.0cm}{\color{LightTeal}\bfseries PART II}\par\vspace{0.45cm}
   {\color{white}\fontsize{30}{33}\selectfont\bfseries Reasoning states}\par
-  \vspace{0.55cm}{\color{white!72}\large At inference time, the information object is an intermediate state that should support future computation.}
+  \vspace{0.55cm}{\color{white!72}\large Information-carrying objects and states in reasoning trajectories}
   \note{\small\begin{itemize}
     \item Deuxième axe: à l'inférence, l'objet n'est plus une mise à jour de paramètres.
     \item On cherche un état intermédiaire qui permette de continuer le calcul.
@@ -923,17 +793,16 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Reasoning models still generate autoregressively}
-\framesubtitle{Chain-of-thought changes the role of intermediate tokens, not the basic generation mechanism}
-\begin{columns}[T,onlytextwidth]
-\column{0.58\textwidth}
+\begin{frame}{Reasoning models are still autoregressive LLMs}
+\begin{columns}[c,onlytextwidth]
+\column{0.56\textwidth}
 \begin{tikzpicture}[node distance=.22cm]
-  \node[boxstyle,fill=Pale,minimum width=1.25cm,minimum height=.72cm] (x) {$x$};
-  \node[amberbox,right=.42cm of x,minimum width=1.25cm,minimum height=.72cm] (z1) {$z_1$};
-  \node[amberbox,right=.42cm of z1,minimum width=1.25cm,minimum height=.72cm] (z2) {$z_2$};
-  \node[right=.42cm of z2,inner xsep=1pt] (dots) {$\cdots$};
-  \node[amberbox,right=.42cm of dots,minimum width=1.25cm,minimum height=.72cm] (zt) {$z_T$};
-  \node[tealbox,right=.42cm of zt,minimum width=1.25cm,minimum height=.72cm] (y) {$y$};
+  \node[boxstyle,fill=Pale,minimum width=1.15cm,minimum height=.72cm] (x) {$x$};
+  \node[amberbox,right=.35cm of x,minimum width=1.15cm,minimum height=.72cm] (z1) {$z_1$};
+  \node[amberbox,right=.35cm of z1,minimum width=1.15cm,minimum height=.72cm] (z2) {$z_2$};
+  \node[right=.35cm of z2,inner xsep=1pt] (dots) {$\cdots$};
+  \node[amberbox,right=.35cm of dots,minimum width=1.15cm,minimum height=.72cm] (zt) {$z_T$};
+  \node[tealbox,right=.35cm of zt,minimum width=1.15cm,minimum height=.72cm] (y) {$y$};
   \draw[arr] (x)--(z1);\draw[arr] (z1)--(z2);\draw[arr] (z2)--(dots);\draw[arr] (dots)--(zt);\draw[arr] (zt)--(y);
   \node[below=.6cm of z2,align=center,font=\small,text width=5cm] {intermediate text becomes a computational workspace};
 \end{tikzpicture}
@@ -941,12 +810,11 @@ Model-only fit & --- & --- & 0.264 & ---\\
 \[
 p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \]
-\column{0.38\textwidth}
+\column{0.36\textwidth}
 \small
 \begin{itemize}\setlength\itemsep{6pt}
   \item CoT can improve multi-step reasoning \parencite{wei2022chain}
   \item RL-based post-training can induce long reasoning traces \parencite{shao2024deepseekmath,deepseekai2025r1}
-  \item no architectural rule says semantic steps must align with sentence/token boundaries
 \end{itemize}
 \end{columns}
 \note{\small\begin{itemize}
@@ -958,38 +826,9 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Token trajectory $\neq$ reasoning-state trajectory}
-\begin{columns}[T,onlytextwidth]
-\column{0.54\textwidth}
-\vspace{0.35cm}
-\includegraphics[width=\linewidth,trim=0bp 0bp 292bp 0bp,clip]{assets/real/depth_length.pdf}\par
-\vspace{0.15cm}
-{\footnotesize\color{Muted} surface token length vs.\ active deduction depth\par}
-\column{0.42\textwidth}
-\begin{block}{Candidate reasoning state}
-\small A compact intermediate representation that is sufficient for a specified future computation.
-\end{block}
-\vspace{0.25cm}
-\small
-\textbf{Three increasingly strong claims}
-\begin{enumerate}\setlength\itemsep{5pt}
-  \item information is \key{decodable}
-  \item state is \key{causally reusable}
-  \item state remains sufficient under \key{repeated updates}
-\end{enumerate}
-\vfill\tinycite{dutta2024step,yang2025symbolic,sun2026trajectories}
-\end{columns}
-\note{\small\begin{itemize}
-  \item On distingue le texte visible de la trajectoire d'activations internes.
-  \item Une étape sémantique peut s'étaler sur de nombreux tokens, et un changement latent peut arriver sans ponctuation.
-  \item Je définis donc un reasoning state par sa fonction: permettre une computation future spécifiée.
-  \item Et je sépare trois niveaux: décodabilité, causalité, puis stabilité récursive.
-\end{itemize}}
-\end{frame}
 
-\begin{frame}{The hypothesis we started from: a solution object}
-\framesubtitle{A long derivation hiding a short series of stable updates}
-\begin{columns}[T,onlytextwidth]
+\begin{frame}{Solution objects in reasoning traces}
+\begin{columns}[c,onlytextwidth]
 \column{0.52\textwidth}
 \centering
 \begin{tikzpicture}[scale=.92,transform shape,font=\scriptsize]
@@ -1004,18 +843,15 @@ p(z,y\mid x)=\Big[\prod_t p(z_t\mid x,z_{<t})\Big]p(y\mid x,z)
 \end{tikzpicture}
 \column{0.44\textwidth}
 \small
-If such objects existed natively, several things should happen at the same places in a trace:
+If such objects existed natively, we would expect to see that:
 \begin{itemize}\setlength\itemsep{5pt}
-  \item a meaningful text boundary coincides with a localized latent change
-  \item equivalent computations permit causal transfer
+  \item meaningful text boundaries coincide with localized latent changes
+  \item equivalent computations should permit causal transfer
   \item similar operations have similar representations
   \item those units help predict correctness
 \end{itemize}
 \end{columns}
 \vfill
-\begin{center}\begin{minipage}{0.9\textwidth}\centering\bfseries
-So the first test is whether one partition of the trace can serve every one of those uses.
-\end{minipage}\end{center}
 \note{\small\begin{itemize}
   \item Hypothèse de départ: une longue chaîne de pensée suit un objet-solution compact.
   \item Les feuilles sont des lectures vérifiables de l'énoncé, les n\oe uds internes des opérations.
@@ -1023,15 +859,14 @@ So the first test is whether one partition of the trace can serve every one of t
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
-\begin{frame}{Experiment: is there one utility-neutral partition of a trace?}
-\framesubtitle{Same token gaps, same boundary budget, four objectives}
+\begin{frame}{Is there a best segmentation for reasoning traces?}
 \begin{columns}[T,onlytextwidth]
 \column{0.46\textwidth}
 \begin{block}{Question}
 Do the boundaries that are good for one use of a reasoning trace also serve the others?
 \end{block}
 \vspace{0.2cm}
-\begin{block}{Why this design answers it}
+\begin{block}{Experiment Design}
 \small Every trace gets the same number of boundaries, set by its count of verified symbolic updates, so no method can win by cutting more often. Random selection is normalized to 0 and each objective's own oracle to 1.
 \end{block}
 \column{0.46\textwidth}
@@ -1056,71 +891,40 @@ Do the boundaries that are good for one use of a reasoning trace also serve the 
 % -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
 \begin{frame}{Different utilities select different boundaries}
-\framesubtitle{Same token gaps, same boundary budget, four objectives}
-\begin{columns}[T,onlytextwidth]
-\column{0.58\textwidth}
-\includegraphics[width=0.92\linewidth,trim=0bp 0bp 0bp 30bp,clip]{assets/real/objective_matrix.pdf}
-\par\vspace{0.3cm}
-{\small Supervised detectors recover each target well, but the target-specific oracle partitions barely overlap.\par}
-\column{0.38\textwidth}
-\stat{0.098--0.210}{oracle-boundary F1 within $\pm4$ tokens}
-\vspace{0.55cm}
-\stat{0.020}{best worst-objective utility}
-\vspace{0.45cm}
-\small Primary SmolLM experiment.
+\begin{columns}[c,onlytextwidth]
+\column{0.60\textwidth}
+\centering
+\includegraphics[width=0.98\linewidth,trim=0bp 0bp 0bp 30bp,clip]{assets/real/objective_matrix.pdf}
+\par\vspace{0.1cm}
+{\scriptsize\color{Muted} normalized utility: random $=0$, own oracle $=1$\par}
+\column{0.36\textwidth}
+\small
+\key{Decodability}\par
+Supervised detectors recover their own boundaries: held-out ROC--AUC {\color{Teal}\bfseries 0.999 / 0.984 / 0.849 / 0.868} on SmolLM.
+\vspace{0.3cm}
+\par\key{"Objectivity"}\par
+Cross-objective F1 within 4 tokens: {\color{Teal}\bfseries 0.098--0.210}. Best worst-objective utility: {\color{Teal}\bfseries 0.020}.
 \end{columns}
-\vspace{0.1cm}
-\begin{center}\bfseries Structure is decodable; a utility-independent partition is not.\end{center}
-\tinycite{qian2025peaks,yu2025stateaware,sun2026trajectories}
+\vspace{0.25cm}
 \note{\small\begin{itemize}
   \item Quatre objectifs sur exactement les mêmes gaps entre tokens, avec le même budget de frontières.
-  \item Les détecteurs supervisés retrouvent très bien leur propre cible: il y a donc du signal.
-  \item Mais les oracles spécifiques se recouvrent très peu: F1 environ 0.10 à 0.21.
-  \item La meilleure règle testée pour servir tous les objectifs atteint seulement 0.020 en worst-objective utility.
-  \item Conclusion: pas d'absence de structure; absence d'une structure unique indépendante de l'usage.
-\end{itemize}}
-\end{frame}
-
-\begin{frame}{Decodable, but not one structure}
-\framesubtitle{Regret against each objective's own oracle}
-\begin{columns}[T,onlytextwidth]
-\column{0.52\textwidth}
-\centering
-\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 30bp,clip]{assets/real/regret_matrix.pdf}
-\column{0.44\textwidth}
-\small
-\textbf{Supervised detectors recover their own target}\par
-\vspace{4pt}
-held-out ROC--AUC, SmolLM: {\color{Teal}\bfseries 0.999 / 0.984 / 0.849 / 0.868}\par
-\vspace{2pt}
-Qwen: {\color{Teal}\bfseries 0.998 / 0.992 / 0.859 / 0.825}\par
-\vspace{0.3cm}
-\textbf{But they select different partitions}\par
-\vspace{4pt}
-cross-objective F1 within 4 tokens: 0.098--0.210 (SmolLM), 0.130--0.294 (Qwen)\par
-\vspace{2pt}
-best worst-objective utility: 0.020 (SmolLM), 0.080 (Qwen)
-\end{columns}
-\vspace{0.1cm}
-\begin{center}\begin{minipage}{0.92\textwidth}\centering\bfseries
-Not an absence of latent structure --- an absence of one utility-independent structure.
-\end{minipage}\end{center}
-\note{\small\begin{itemize}
-  \item Les détecteurs supervisés retrouvent très bien leur propre cible: le signal existe.
-  \item Mais le transfert entre objectifs est faible, et aucune règle ne sert les quatre.
-  \item Le projet passe donc de « trouver la partition canonique » à « quel état suffit pour quel usage ».
+  \item Normalisation: sélection aléatoire à 0, oracle de l'objectif à 1.
+  \item Les détecteurs supervisés retrouvent très bien leur propre cible: AUC 0.999 / 0.984 / 0.849 / 0.868.
+  \item Mais le transfert croisé est faible: F1 à quatre tokens entre 0.098 et 0.210.
+  \item La meilleure règle pour servir les quatre objectifs n'atteint que 0.020 en worst-objective utility.
+  \item Sur Qwen: AUC 0.998 / 0.992 / 0.859 / 0.825, F1 0.130 à 0.294, worst-objective 0.080.
+  \item Conclusion: pas d'absence de structure, mais absence d'une structure unique indépendante de l'usage.
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
-\begin{frame}{Objection: maybe the four objectives missed the semantic steps}
-\framesubtitle{Judged spans as a human-facing control}
+\begin{frame}{How about human-labeled spans?}
 \begin{columns}[T,onlytextwidth]
 \column{0.46\textwidth}
 \begin{block}{Question}
 Would boundaries that a human reader would call reasoning steps behave differently?
 \end{block}
 \vspace{0.2cm}
-\begin{block}{Why this design answers it}
+\begin{block}{Experiment Design}
 \small The labels come from outside our four operational objectives, so agreement or disagreement with them is independent evidence.
 \end{block}
 \column{0.46\textwidth}
@@ -1141,7 +945,7 @@ Would boundaries that a human reader would call reasoning steps behave different
 \end{frame}
 % -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
-\begin{frame}{Readable semantic spans are decodable too --- but still objective-relative}
+\begin{frame}{How about human-labeled spans?}
 \begin{columns}[T,onlytextwidth]
 \column{0.55\textwidth}
 \begin{tikzpicture}[node distance=.27cm]
@@ -1159,7 +963,7 @@ Would boundaries that a human reader would call reasoning steps behave different
 \stat{0.892}{lexical TF--IDF baseline}
 \end{columns}
 \vfill
-\small\centering 1,761 judged spans over 58 traces; transfer to the four operational objectives remains weak.
+\small\centering As often with LLMs operating in a hugely overparameterized space, decodability is much easier to establish than causal utility.
 \note{\small\begin{itemize}
   \item Contrôle contre une objection naturelle: nos quatre objectifs opérationnels ont peut-être raté les « vraies » étapes sémantiques.
   \item Un grand modèle étiquette neuf types d'édition; on obtient 1 761 spans.
@@ -1168,210 +972,39 @@ Would boundaries that a human reader would call reasoning steps behave different
 \end{itemize}}
 \end{frame}
 
-\begin{frame}{Experiment: is snapshot information the same thing as memory?}
-\framesubtitle{An exact finite control, with no generation or judging noise}
-\begin{columns}[T,onlytextwidth]
-\column{0.46\textwidth}
-\begin{block}{Question}
-Can two representations carry the same information now and still differ as memories later?
-\end{block}
-\vspace{0.2cm}
-\begin{block}{Why this design answers it}
-\small The hidden-state model, the memory update and the planner are all explicit, so any performance difference is attributable to the representation and its update rule.
-\end{block}
-\column{0.46\textwidth}
-\small
-\textbf{Setup}
-\begin{itemize}\setlength\itemsep{4pt}
-  \item controller observes a short history from a finite hidden state, then decides over a future horizon
-  \item memories: full public history, 12-bit text suffix, 12-bit explicit field state, no memory
-  \item 90 task cells
-  \item matched at the start: same support, $I(S;M)=2.512$ bits, path leakage 1.781 bits
-\end{itemize}
-\end{columns}
-\note{\small\begin{itemize}
-  \item Contrôle fini exact: pas de bruit de génération ni de juge.
-  \item Les représentations partent avec exactement la même information sur l'état.
-  \item Toute différence ultérieure vient donc de la règle de mise à jour.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-% -----------------------------------------------------------------------------
-\begin{frame}{Snapshot information is not memory}
-\framesubtitle{Exact finite control: same initial information, different update rule}
-\begin{columns}[T,onlytextwidth]
-\column{0.98\textwidth}\centering
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[node distance=.3cm]
-  \node[tealbox,minimum width=2.8cm,minimum height=.9cm,align=center] (full) {\bfseries full history\\persistent};
-  \node[amberbox,below=.55cm of full,minimum width=2.8cm,minimum height=.9cm,align=center] (suf) {\bfseries 12-bit suffix\\drops old observations};
-  \node[boxstyle,right=1.0cm of full,minimum width=3.2cm,minimum height=.9cm,align=center] (same) {same initial support\\$I(S;M)=2.512$ bits};
-  \draw[arr] (full)--(same);\draw[arr] (suf)--(same);
-  \node[tealbox,right=.8cm of same,minimum width=2.2cm,minimum height=.9cm,align=center] (future) {future control\\horizon $H$};
-  \draw[arr] (same)--(future);
-\end{tikzpicture}}
-\end{columns}
-\vfill
-\begin{center}\bfseries A reusable state must be sufficient \emph{and remain sufficient after updates}.\end{center}
-\note{\small\begin{itemize}
-  \item Contrôle fini exact: pas de bruit de génération LLM.
-  \item Full history et suffixe 12 bits commencent avec le même support et la même information instantanée sur l'état.
-  \item La différence apparaît ensuite parce que le suffixe oublie les observations anciennes.
-  \item À horizon 32, regret 2.20 contre 30.91.
-  \item Donc une mesure snapshot ne suffit pas à définir une mémoire utile; l'update rule fait partie du récepteur.
-\end{itemize}}
-\end{frame}
 
-\begin{frame}{Equal snapshot information, unequal memory}
-\framesubtitle{Exact closed-loop regret over the continuation horizon}
+\begin{frame}{If no single state partition exists, how does the model carry information forward?}
 \begin{columns}[T,onlytextwidth]
-\column{0.60\textwidth}
-\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 24bp,clip]{assets/real/closed_loop_regret.pdf}
-\column{0.36\textwidth}
-\vspace{0.3cm}
-\stat{$7.19\times$}{pooled regret, suffix vs.\ full history}
-\vspace{0.3cm}
-\small
-\begin{itemize}\setlength\itemsep{5pt}
-  \item at $H=32$: {\color{Teal}\bfseries 2.20} full history, {\color{Teal}\bfseries 30.91} suffix
-  \item regret removed vs.\ no memory: 93.7\% full history, 79.3\% field state, 54.8\% suffix
-\end{itemize}
-\end{columns}
-\vspace{0.1cm}
-\begin{center}\begin{minipage}{0.92\textwidth}\centering\bfseries
-Matched initial capacity rules out capacity: the gap appears only as the memories are updated.
-\end{minipage}\end{center}
-\note{\small\begin{itemize}
-  \item Même support initial, même information mutuelle, et pourtant jamais le même regret.
-  \item À l'horizon 32: 2.20 pour l'historique complet contre 30.91 pour le suffixe.
-  \item L'état explicite 12 bits fait beaucoup mieux que le suffixe, sans égaler l'historique.
-  \item Le suffixe échoue parce qu'il oublie les observations anciennes au fil des mises à jour.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-\begin{frame}{Experiment: can a frozen model route its own state?}
-\framesubtitle{Synthetic addition task where the needed intermediate state is known exactly}
-\begin{columns}[T,onlytextwidth]
-\column{0.46\textwidth}
-\begin{block}{Question}
-Is failure at multi-step composition a failure to \emph{infer} the state, or a failure to \emph{use} it?
-\end{block}
-\vspace{0.2cm}
-\begin{block}{Why this design answers it}
-\small A short program leads to one of eight three-bit states and a separate table maps that state to the answer, so reading, updating, inferring and using the state can each be scored separately.
-\end{block}
-\column{0.46\textwidth}
-\small
-\textbf{Four abilities tested separately}
-\begin{enumerate}\setlength\itemsep{4pt}
-  \item read a supplied state
-  \item apply a local update
-  \item infer the endpoint of a history
-  \item use that inferred endpoint in the final lookup
-\end{enumerate}
-\vspace{0.25cm}
-frozen Qwen2.5-32B; eight-state chance level is 12.5\%
-\end{columns}
-\note{\small\begin{itemize}
-  \item Tâche synthétique où l'état intermédiaire nécessaire est connu exactement.
-  \item On sépare quatre capacités: lire, mettre à jour, inférer, puis utiliser l'état inféré.
-  \item Le niveau de chance est 12.5\% avec huit états.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-% -----------------------------------------------------------------------------
-\begin{frame}{Explicit handoff restores composition}
-\framesubtitle{Controlled eight-state program with frozen Qwen2.5-32B}
-\begin{center}
-\begin{tikzpicture}[node distance=.33cm]
-  \node[boxstyle,minimum width=2.6cm,minimum height=.9cm,align=center] (hist) {program history};
-  \node[amberbox,right=.8cm of hist,minimum width=2.5cm,minimum height=.9cm,align=center] (infer) {infer endpoint\\state $\hat s$};
-  \node[tealbox,right=.8cm of infer,minimum width=2.5cm,minimum height=.9cm,align=center] (look) {lookup\\answer};
-  \draw[arr] (hist)--(infer);\draw[arr] (infer)--(look);
-  \node[below=.95cm of infer,align=center,font=\scriptsize,text=Muted] (fresh) {delete history\\fresh model call};
-  \draw[-{Latex[length=2mm]},draw=Teal,line width=1.1pt] (infer.south)--(fresh.north);
-  \draw[-{Latex[length=2mm]},draw=Teal,line width=1.1pt] (fresh.east) -| (look.south);
+\column{0.54\textwidth}
+\begin{tikzpicture}[font=\small,node distance=.3cm]
+  \node[font=\footnotesize,text=Muted,anchor=west] at (0,3.15) {four facts $A,B,C,D$; one bit each, in that order};
+  % call 1
+  \node[boxstyle,anchor=west,minimum height=.72cm,align=left,inner xsep=6pt] (i1) at (0,2.4)
+    {\footnotesize given \texttt{1000} \; and \; ``$A\Rightarrow C$''};
+  \node[tealbox,anchor=west,minimum height=.72cm,inner xsep=6pt] (o1) at (5.6,2.4) {\footnotesize\texttt{1010}};
+  \draw[arr] (i1)--(o1);
+  % call 2
+  \node[boxstyle,anchor=west,minimum height=.72cm,align=left,inner xsep=6pt] (i2) at (0,1.2)
+    {\footnotesize given \texttt{1010} \; and \; ``$C\Rightarrow D$''};
+  \node[tealbox,anchor=west,minimum height=.72cm,inner xsep=6pt] (o2) at (5.6,1.2) {\footnotesize\texttt{1011}};
+  \draw[arr] (i2)--(o2);
+  \draw[-{Latex[length=1.6mm]},draw=Amber,line width=.9pt,rounded corners=2pt] (o1.south) -- ++(0,-.12) -| (1.35,1.57);
+  \node[font=\footnotesize,text=Amber,anchor=west] at (0,.35) {the model's own output is the next call's input};
 \end{tikzpicture}
-\end{center}
-\vspace{0.45cm}
-\begin{center}
+\column{0.42\textwidth}
 \small
-\begin{tabular}{lr}
-\toprule
-assay & accuracy\\\midrule
-one-pass infer+lookup & 13.44\%\\
-endpoint inference & 76.98\%\\
-explicit handoff & 76.98\%\\
-correct endpoint given & 100\%\\
-\bottomrule
-\end{tabular}
-\end{center}
-\vfill
-\begin{center}\bfseries The missing ingredient can be routing/composition, not missing state information.\end{center}
-\note{\small\begin{itemize}
-  \item Assay contrôlé à huit états: historique de programme puis table state-to-answer.
-  \item Le modèle sait inférer l'endpoint à environ 77\%, mais le one-pass endpoint+lookup tombe à 13.44\%.
-  \item Intervention: faire prédire l'état, supprimer l'historique, donner uniquement cet état à un nouvel appel.
-  \item La précision revient exactement à 76.98\%; endpoint correct fourni donne 100\%.
-  \item Cela isole un problème de routage/composition plutôt qu'une simple absence d'information.
-\end{itemize}}
-\end{frame}
-
-\begin{frame}{Experiment: what makes a supplied interface work?}
-\framesubtitle{Finite proof task, four code designs at equal data and compute}
-\begin{columns}[T,onlytextwidth]
-\column{0.46\textwidth}
-\begin{block}{Question}
-Is enough capacity sufficient for a reusable state code, or does the naming matter too?
-\end{block}
-\vspace{0.2cm}
-\begin{block}{Why this design answers it}
-\small At each step the previous rules are discarded and only the state code is passed on, so the experiment succeeds only if the code itself carries the state.
-\end{block}
-\column{0.46\textwidth}
-\small
-\textbf{Four codes, one four-bit fact ledger (16 states)}
-\begin{itemize}\setlength\itemsep{4pt}
-  \item \key{3-bit lossy}: must merge some states
-  \item \key{4-bit canonical}: one stable name per state
-  \item \key{5-bit padded}: unused capacity, still one name
-  \item \key{5-bit path-aliased}: same state, two names depending on the path
-\end{itemize}
-\vspace{0.2cm}
-the last pair isolates capacity from naming
+\key{Prediction:} the new four-bit string after applying one rule.
+\vspace{0.25cm}
+\par\key{Composition:} A model that applies one rule but cannot chain them scores well per step and still ends on the wrong facts.
 \end{columns}
 \note{\small\begin{itemize}
+  \item Changement d'approche: puisque aucune partition ne s'impose dans la trace, on fournit nous-mêmes l'état.
+  \item Une interface d'état, c'est simplement le seul objet qu'un appel a le droit de transmettre au suivant.
   \item Tâche de preuve finie: un registre de quatre faits, donc seize états.
-  \item À chaque étape, seules les règles courantes et le code d'état sont transmis.
-  \item Les quatre codes séparent capacité insuffisante, capacité en excès et nommage instable.
-\end{itemize}}
-\end{frame}
-% -----------------------------------------------------------------------------
-% -----------------------------------------------------------------------------
-\begin{frame}{Capacity and stable names are separate requirements}
-\begin{columns}[T,onlytextwidth]
-\column{0.55\textwidth}
-\vspace{0.2cm}
-\includegraphics[width=\linewidth,trim=0bp 0bp 0bp 20bp,clip]{assets/real/rate_sufficiency.pdf}\par
-\vspace{0.1cm}
-{\footnotesize canonical interface 97.22\% vs.\ 72.22\% one-pass reasoning; paired gain 25 points, CI $[12.50,38.89]$\par}
-\column{0.41\textwidth}
-\small
-\begin{itemize}\setlength\itemsep{7pt}
-  \item 3 bits: unavoidable collisions
-  \item 4-bit canonical: exact through $H=256$
-  \item 5-bit padded: exact through $H=256$
-  \item 5-bit path-aliased: $30$--$40\%$ by depth 3
-\end{itemize}
-\end{columns}
-\vfill
-\begin{center}\bfseries Same capacity $\neq$ same causal interface. Shared semantics must be stable.\end{center}
-\note{\small\begin{itemize}
-  \item On sépare ici capacité brute et sémantique de l'interface.
-  \item 16 états demandent au moins 4 bits pour une identification exacte.
-  \item 4-bit canonical et 5-bit padded gardent un nom stable par état et restent exacts très loin.
-  \item 5-bit path-aliased a plus de capacité mais plusieurs noms pour le même état selon l'historique; les performances chutent très vite.
-  \item Donc le nombre de bits seul ne suffit pas: le code doit avoir une sémantique partagée et stable.
+  \item À chaque étape, l'historique est supprimé: si le code suffit, ce qui a été effacé était redondant.
+  \item Deux façons d'échouer: trop peu de capacité, ou un nommage instable.
+  \item Nommage instable: le même état s'écrit différemment selon le chemin qui y a mené, 0101 ou 1101 pour l'état {a,c}.
+  \item Le couple padded / path-aliased garde la taille du code fixe et ne fait varier que le nommage.
 \end{itemize}}
 \end{frame}
 
@@ -1389,7 +1022,6 @@ the last pair isolates capacity from naming
 \vfill
 \begin{center}\small Chance: 6.25\% · one-pass reasoning: 5.83\%\end{center}
 \vspace{0.25cm}
-\begin{center}\bfseries Closed-loop reliability is a property of the state \emph{and} its update dynamics.\end{center}
 \note{\small\begin{itemize}
   \item Sur une tâche register plus variée, la transition locale est correcte environ 89\% du temps.
   \item Mais en réinjectant les états prédits sur 32 étapes, la réponse finale tombe à 7.92\%, quasiment chance.
@@ -1422,15 +1054,14 @@ A transition function that is 89\% correct in one step is not reliable enough fo
 \end{itemize}}
 \end{frame}
 % -----------------------------------------------------------------------------
-\begin{frame}{Experiment: do reasoning and answer cost the same to write?}
-\framesubtitle{The first bridge between the two parts}
+\begin{frame}{Is reasoning even worth it?}
 \begin{columns}[T,onlytextwidth]
 \column{0.46\textwidth}
 \begin{block}{Question}
-Within one adapter, does the reasoning chain require more update information than the final answer?
+Within one adapter, does the reasoning chain require more update information than the final answer to reach a given level of performance?
 \end{block}
 \vspace{0.2cm}
-\begin{block}{Why this design answers it}
+\begin{block}{Experiment Design}
 \small Same corpus, same codec ladder and same rate axis as Part I; only the supervised span and the frozen receiver change.
 \end{block}
 \column{0.46\textwidth}
@@ -1453,24 +1084,22 @@ $R^{\star}_{M,U}(\tau)=\min_A R(A)$ s.t.\ $W_{M,U}(A)\ge\tau W_{M,U}(A_{\mathrm{
 \end{frame}
 % -----------------------------------------------------------------------------
 % -----------------------------------------------------------------------------
-\begin{frame}{The two axes meet: even reasoning-vs-answer rate is receiver-dependent}
-\framesubtitle{Same MetaMathQA adapters; same codec; two utilities}
+\begin{frame}{Once again, reasoning-vs-answer rate is receiver-dependent}
 \begin{columns}[T,onlytextwidth]
-\column{0.62\textwidth}
+\column{0.57\textwidth}
 \vspace{0.05cm}
 \includegraphics[width=0.80\linewidth,trim=0bp 0bp 348bp 20bp,clip]{assets/real/cot_finetuning_limits.pdf}
-\column{0.34\textwidth}
+\column{0.43\textwidth}
 \small
 \textbf{Ordering reverses}
 \vspace{0.3cm}
 \begin{itemize}\setlength\itemsep{7pt}
   \item Mistral: reasoning costs much more
-  \item Qwen: reasoning costs slightly less
-  \item answer rates almost match
+  \item Qwen: reasoning costs slightly less (of note: Qwen's base model was RL-trained for CoT; less of a domain shift)
+  \item answer rates almost match, but this is for easy questions. CoT tends to be costly twice (test-time compute and update information), but also effective twice for hard questions (cheaper to learn and higher accuracy).
 \end{itemize}
 \end{columns}
 \vspace{0.15cm}
-\begin{center}\bfseries Utility and receiver jointly define the update information we measure.\end{center}
 \note{\small\begin{itemize}
   \item Connexion directe entre les deux axes: même protocole de compression d'adapter, mais scoring séparé des tokens de reasoning et de réponse.
   \item Mistral: reasoning 1.070 bits/value, answer 0.578.
@@ -1515,16 +1144,11 @@ $R^{\star}_{M,U}(\tau)=\min_A R(A)$ s.t.\ $W_{M,U}(A)\ge\tau W_{M,U}(A_{\mathrm{
 % -----------------------------------------------------------------------------
 \begin{frame}[plain]
   \begin{tikzpicture}[remember picture,overlay]\fill[Dark] (current page.south west) rectangle (current page.north east);\end{tikzpicture}
-  \vspace{1.25cm}
-  {\color{LightTeal}\bfseries CONCLUSION}\par\vspace{0.6cm}
-  {\color{white}\fontsize{31}{34}\selectfont\bfseries Useful information depends on its use}\par
-  \vspace{0.9cm}
-  \begin{columns}[T,onlytextwidth]
-  \column{0.48\textwidth}{\color{white}\bfseries Receiver}\par{\color{white!72}\small Which model must use the information?}
-  \column{0.48\textwidth}{\color{white}\bfseries Utility + update rule}\par{\color{white!72}\small Which behavior must survive, and for how long?}
-  \end{columns}
-  \vspace{1.15cm}
-  {\color{white}\large Information is not in the object alone; it is in the object-for-a-use.}
+  \vspace{1.0cm}
+  {\color{LightTeal}\bfseries CONCLUSION}\par\vspace{0.5cm}
+  {\color{white}\fontsize{26}{29}\selectfont\bfseries Why are the informational dynamics of LLM reasoning and finetuning so closely related?}\par
+  \vspace{0.85cm}
+  {\color{white}\large Information as a strongly utility-dependent resource}
   \note{\small\begin{itemize}
     \item Contribution centrale: remplacer des proxies vagues par des tests comportementaux concrets.
     \item Fine-tuning: message supplémentaire nécessaire à un base model donné.
@@ -1534,6 +1158,46 @@ $R^{\star}_{M,U}(\tau)=\min_A R(A)$ s.t.\ $W_{M,U}(A)\ge\tau W_{M,U}(A_{\mathrm{
   \end{itemize}}
 \end{frame}
 
+
+% -----------------------------------------------------------------------------
+\begin{frame}{A closing perspective: reasoning as compression}
+\begin{columns}[c,onlytextwidth]
+\column{0.44\textwidth}
+\centering
+\begin{tikzpicture}[font=\scriptsize,scale=.92,transform shape]
+  \node[anchor=west,text=Muted] at (0,2.15) {capable receiver};
+  \node[boxstyle,minimum width=.8cm,minimum height=.5cm] (a0) at (.4,1.55) {$x$};
+  \node[tealbox,minimum width=.8cm,minimum height=.5cm] (a1) at (2.4,1.55) {$z$};
+  \node[boxstyle,fill=Pale,minimum width=.8cm,minimum height=.5cm] (a2) at (4.4,1.55) {$y$};
+  \draw[arr] (a0)--(a1); \draw[arr] (a1)--(a2);
+  \node[anchor=west,text=Muted] at (0,.6) {weaker receiver};
+  \foreach \i in {0,...,5}{
+    \node[amberbox,minimum width=.5cm,minimum height=.5cm] (b\i) at (.4+\i*.8,0) {};
+  }
+  \node at (.4,0) {$x$}; \node at (4.4,0) {$y$};
+  \foreach \i [evaluate=\i as \j using int(\i+1)] in {0,...,4}{\draw[arr] (b\i)--(b\j);}
+\end{tikzpicture}
+\par\vspace{0.3cm}
+{\footnotesize\color{Muted} the same problem at two step granularities\par}
+\column{0.50\textwidth}
+\small
+\key{Shannon view of intelligence} A model that predicts well is a model that compresses well.
+\vspace{0.2cm}
+\par\key{Reasoning} is the search for a path through that description --- each CoT token a partly compressed latent step along it.
+\vspace{0.2cm}
+\par\key{Length is not free} Accuracy follows ``an inverted U-shaped curve with CoT length''; the optimum ``increases with task difficulty but decreases with model capability'' \parencite{wu2025cotlength}.
+\vspace{0.2cm}
+\par\key{Fine-tuning should set the granularity of CoT} supervision helps most when its step size matches what the receiver can already cross in one jump.
+\end{columns}
+\note{\small\begin{itemize}
+  \item Dernière perspective, plus large: prédire et compresser sont le même problème, depuis Shannon.
+  \item Raisonner, c'est alors chercher un chemin dans cette description, un saut compressé à la fois.
+  \item La longueur optimale de CoT n'est pas libre: courbe en U inversé, et elle décroît avec la capacité du modèle.
+  \item Un modèle plus capable franchit plus de distance en une étape: il lui faut moins d'étapes.
+  \item Et le finetuning fixe la granularité: la supervision doit être alignée sur ce que le receveur sait déjà franchir.
+  \item C'est exactement la thèse des deux parties: l'unité utile est définie par le receveur et l'usage.
+\end{itemize}}
+\end{frame}
 
 % -----------------------------------------------------------------------------
 \begin{frame}[allowframebreaks]{References used in the presentation}
