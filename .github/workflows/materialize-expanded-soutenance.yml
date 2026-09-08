@@ -1,0 +1,54 @@
+name: Materialize expanded soutenance
+
+on:
+  push:
+    branches: [soutenance-v2-fr-notes]
+    paths:
+      - .github/workflows/materialize-expanded-soutenance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: soutenance-v2-fr-notes
+          fetch-depth: 0
+
+      - name: Decode staged expanded source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+
+          root = Path('soutenance/latex')
+          payload = root / 'source_payload.b64'
+          raw = base64.b64decode(payload.read_text().strip())
+          tex = gzip.decompress(raw)
+          if not tex.lstrip().startswith(b'\\documentclass'):
+              raise SystemExit('Decoded payload does not look like a LaTeX document')
+          if b'\\begin{document}' not in tex or b'\\end{document}' not in tex:
+              raise SystemExit('Decoded source is incomplete')
+          (root / 'main.tex').write_bytes(tex)
+          print(f'Materialized main.tex: {len(tex):,} bytes')
+          PY
+
+      - name: Remove staging files
+        run: |
+          rm -rf soutenance/latex/.tmp_main
+          rm -f soutenance/latex/source_payload.b64
+
+      - name: Commit materialized source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add soutenance/latex/main.tex soutenance/latex/.tmp_main soutenance/latex/source_payload.b64
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Materialize expanded LaTeX soutenance"
+          git push origin HEAD:soutenance-v2-fr-notes
