@@ -18,20 +18,46 @@ jobs:
           ref: soutenance-v2-fr-notes
           fetch-depth: 0
 
-      - name: Decode staged expanded source
+      - name: Recover and decode staged expanded source
         run: |
           python - <<'PY'
           from pathlib import Path
-          import base64, gzip
+          import base64, re, zlib
 
           root = Path('soutenance/latex')
           payload = root / 'source_payload.b64'
-          raw = base64.b64decode(payload.read_text().strip())
-          tex = gzip.decompress(raw)
-          if not tex.lstrip().startswith(b'\\documentclass'):
-              raise SystemExit('Decoded payload does not look like a LaTeX document')
-          if b'\\begin{document}' not in tex or b'\\end{document}' not in tex:
-              raise SystemExit('Decoded source is incomplete')
+          s = re.sub(r'\s+', '', payload.read_text())
+          print('staged base64 chars:', len(s), 'mod4:', len(s) % 4)
+
+          candidates = []
+          for trim in range(0, 33):
+              t = s[:-trim] if trim else s
+              if len(t) % 4 == 1:
+                  continue
+              padded = t + '=' * ((-len(t)) % 4)
+              try:
+                  raw = base64.b64decode(padded, validate=False)
+                  dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                  tex = dec.decompress(raw) + dec.flush()
+              except Exception as e:
+                  print('trim', trim, 'failed:', repr(e))
+                  continue
+              ok_start = tex.lstrip().startswith(b'\\documentclass')
+              has_begin = b'\\begin{document}' in tex
+              has_end = b'\\end{document}' in tex
+              print('trim', trim, '->', len(raw), 'gzip bytes,', len(tex), 'tex bytes; start/begin/end=', ok_start, has_begin, has_end)
+              if ok_start and has_begin:
+                  candidates.append((has_end, len(tex), trim, tex))
+
+          if not candidates:
+              raise SystemExit('Could not recover a plausible LaTeX document')
+          candidates.sort(reverse=True, key=lambda x: (x[0], x[1]))
+          has_end, n, trim, tex = candidates[0]
+          print('selected trim', trim, 'length', n, 'complete=', has_end)
+          print('tail:\n', tex[-800:].decode('utf-8', 'replace'))
+          if not has_end:
+              raise SystemExit('Recovered source is truncated before \\end{document}; refusing to materialize')
+
           (root / 'main.tex').write_bytes(tex)
           print(f'Materialized main.tex: {len(tex):,} bytes')
           PY
@@ -45,7 +71,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add soutenance/latex/main.tex soutenance/latex/.tmp_main soutenance/latex/source_payload.b64
+          git add -A soutenance/latex
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
