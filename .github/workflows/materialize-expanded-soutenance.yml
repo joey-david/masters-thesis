@@ -4,7 +4,9 @@ on:
   push:
     branches: [soutenance-v2-fr-notes]
     paths:
+      - soutenance/latex/source_payload.b64
       - .github/workflows/materialize-expanded-soutenance.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,7 +21,9 @@ jobs:
           fetch-depth: 0
 
       - name: Recover and decode staged expanded source
+        shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import base64, re, zlib
@@ -27,54 +31,63 @@ jobs:
           root = Path('soutenance/latex')
           payload = root / 'source_payload.b64'
           s = re.sub(r'\s+', '', payload.read_text())
-          print('staged base64 chars:', len(s), 'mod4:', len(s) % 4)
-
           candidates = []
-          for trim in range(0, 33):
+          for trim in range(0, 65):
               t = s[:-trim] if trim else s
               if len(t) % 4 == 1:
                   continue
-              padded = t + '=' * ((-len(t)) % 4)
               try:
-                  raw = base64.b64decode(padded, validate=False)
+                  raw = base64.b64decode(t + '=' * ((-len(t)) % 4), validate=False)
                   dec = zlib.decompressobj(16 + zlib.MAX_WBITS)
                   tex = dec.decompress(raw) + dec.flush()
-              except Exception as e:
-                  print('trim', trim, 'failed:', repr(e))
+              except Exception:
                   continue
-              ok_start = tex.lstrip().startswith(b'\\documentclass')
-              has_begin = b'\\begin{document}' in tex
-              has_end = b'\\end{document}' in tex
-              print('trim', trim, '->', len(raw), 'gzip bytes,', len(tex), 'tex bytes; start/begin/end=', ok_start, has_begin, has_end)
-              if ok_start and has_begin:
-                  candidates.append((has_end, len(tex), trim, tex))
-
+              ok = tex.lstrip().startswith(b'\\documentclass') and b'\\begin{document}' in tex and b'\\end{document}' in tex
+              if ok:
+                  candidates.append((len(tex), trim, tex))
           if not candidates:
-              raise SystemExit('Could not recover a plausible LaTeX document')
-          candidates.sort(reverse=True, key=lambda x: (x[0], x[1]))
-          has_end, n, trim, tex = candidates[0]
-          print('selected trim', trim, 'length', n, 'complete=', has_end)
-          print('tail:\n', tex[-800:].decode('utf-8', 'replace'))
-          if not has_end:
-              raise SystemExit('Recovered source is truncated before \\end{document}; refusing to materialize')
-
+              raise SystemExit('Could not recover a complete LaTeX document from source_payload.b64')
+          _, trim, tex = max(candidates)
           (root / 'main.tex').write_bytes(tex)
-          print(f'Materialized main.tex: {len(tex):,} bytes')
+          print('Recovered main.tex with', len(tex), 'bytes; trim=', trim)
           PY
 
-      - name: Remove staging files
+      - name: Fetch canonical online background figures
+        shell: bash
         run: |
-          rm -rf soutenance/latex/.tmp_main
-          rm -f soutenance/latex/source_payload.b64
+          set -euo pipefail
+          mkdir -p soutenance/latex/assets /tmp/papers
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils imagemagick
 
-      - name: Commit materialized source
+          curl -L --retry 3 -o /tmp/papers/transformer.pdf https://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf
+          curl -L --retry 3 -o /tmp/papers/lora.pdf https://arxiv.org/pdf/2106.09685
+          curl -L --retry 3 -o /tmp/papers/qlora.pdf https://arxiv.org/pdf/2305.14314
+          curl -L --retry 3 -o soutenance/latex/assets/lora_hf_explainer.png \
+            https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/peft/lora_diagram.png
+
+          pdftoppm -f 3 -singlefile -png -r 200 /tmp/papers/transformer.pdf /tmp/transformer_page
+          pdftoppm -f 1 -singlefile -png -r 200 /tmp/papers/lora.pdf /tmp/lora_page
+          pdftoppm -f 3 -singlefile -png -r 200 /tmp/papers/qlora.pdf /tmp/qlora_page
+
+          convert /tmp/transformer_page.png -crop 860x1250+440+120 +repage soutenance/latex/assets/transformer_vaswani_fig1.png
+          convert /tmp/lora_page.png -crop 560x600+1010+1410 +repage soutenance/latex/assets/lora_hu_fig1.png
+          convert /tmp/qlora_page.png -crop 1210x620+270+150 +repage soutenance/latex/assets/qlora_dettmers_fig1.png
+          identify soutenance/latex/assets/*.png
+
+      - name: Remove staging payload
+        run: rm -f soutenance/latex/source_payload.b64
+
+      - name: Commit materialized source and figures
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A soutenance/latex
           if git diff --cached --quiet; then
             echo "No changes to commit"
-            exit 0
+          else
+            git commit -m "Materialize expanded LaTeX soutenance and paper figures"
+            git push origin HEAD:soutenance-v2-fr-notes
           fi
-          git commit -m "Materialize expanded LaTeX soutenance"
-          git push origin HEAD:soutenance-v2-fr-notes
