@@ -7,7 +7,8 @@ Editable Beamer version of the thesis defense.
 - `main.tex` — slides + French speaker notes (`\note{...}`)
 - `notes.tex` — presenter build: slide on the left, notes on the right
 - `references.bib` — references used by the deck; restricted to the thesis bibliography
-- `assets/` — explanatory illustrations plus report-figure crops used in the experimental slides
+- `assets/` — report-figure crops used in the experimental slides
+- `assets/papers/` — vector crops of the original Figure 1 of Vaswani et al. (2017, p. 3), Hu et al. (LoRA, arXiv:2106.09685v2, p. 1) and Dettmers et al. (QLoRA, arXiv:2305.14314v1, p. 3), used on the foundational slides
 - `generate_assets.py` — reproducibly regenerates all assets from the final report and deterministic classical Transformer / LoRA / QLoRA / quantization diagrams
 - `Makefile` — reproducible builds
 

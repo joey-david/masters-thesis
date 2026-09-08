@@ -17,6 +17,8 @@
 \usepackage{pgfpages}
 \usepackage[backend=biber,style=authoryear,maxcitenames=2,maxbibnames=99,doi=false,isbn=false,url=false]{biblatex}
 \addbibresource{references.bib}
+\usepackage{graphicx}
+\graphicspath{{./}}
 
 \definecolor{Ink}{HTML}{142E38}
 \definecolor{Muted}{HTML}{577079}
@@ -80,6 +82,7 @@
 \newcommand{\teal}[1]{\textcolor{Teal}{#1}}
 \newcommand{\amber}[1]{\textcolor{Amber}{#1}}
 \newcommand{\key}[1]{\textbf{\textcolor{Ink}{#1}}}
+\newcommand{\figsource}[2]{\hfill{\footnotesize\color{Muted}\textbf{Source:} \textcite{#1}, #2}}
 \newcommand{\tinycite}[1]{\hfill{\scriptsize\color{Muted}\parencite{#1}}}
 \newcommand{\result}[2]{\begin{minipage}{#1}\centering{\fontsize{22}{24}\selectfont\bfseries\color{Teal}#2}\end{minipage}}
 \newcommand{\chip}[1]{\tikz[baseline=-.5ex]\node[fill=Pale,rounded corners=2pt,inner xsep=5pt,inner ysep=2.3pt,font=\scriptsize\bfseries,text=Ink]{#1};}
@@ -165,44 +168,37 @@
 
 % -----------------------------------------------------------------------------
 \begin{frame}{An LLM is an autoregressive neural network}
-\framesubtitle{For Part I, the key object is the input--output function, not the internal circuit decomposition}
+\framesubtitle{Internally a stack of attention/MLP blocks --- for Part I, a single function $f_{\theta_0}$}
+\begin{columns}[c,onlytextwidth]
+\column{0.36\textwidth}
 \begin{center}
-\begin{tikzpicture}[node distance=.28cm]
-  \node[boxstyle,fill=Pale,minimum width=1.45cm,minimum height=.68cm] (tok) {tokens};
-  \node[boxstyle,right=of tok,minimum width=1.65cm,minimum height=.68cm] (emb) {embeddings};
-  \node[boxstyle,right=of emb,minimum width=2.65cm,minimum height=.68cm] (tr) {Transformer blocks};
-  \node[boxstyle,right=of tr,minimum width=1.25cm,minimum height=.68cm] (log) {logits};
-  \node[tealbox,right=of log,minimum width=2.55cm,minimum height=.68cm] (p) {$p_\theta(y_t\mid x,y_{<t})$};
-  \draw[arr] (tok)--(emb); \draw[arr] (emb)--(tr); \draw[arr] (tr)--(log); \draw[arr] (log)--(p);
-  \node[below=.48cm of tr,align=center,text width=4.8cm,font=\small] {self-attention + MLP + residual stream\\repeated through many layers};
-  \draw[decorate,decoration={brace,amplitude=4pt},draw=Muted] ([xshift=-1.05cm,yshift=-.28cm]tr.south) -- ([xshift=1.05cm,yshift=-.28cm]tr.south);
-\end{tikzpicture}
+\includegraphics[height=0.645\paperheight]{assets/papers/transformer_vaswani_fig1}
 \end{center}
-\vspace{0.15cm}
-\begin{columns}[T,onlytextwidth]
-\column{0.55\textwidth}
-{\color{Teal}\large Autoregressive objective}\par\vspace{0.08cm}
+\column{0.60\textwidth}
+\vspace{0.10cm}
+{\color{Teal}\large Autoregressive objective}\par\vspace{0.02cm}
 \[
   p_\theta(y_{1:T}\mid x)=\prod_{t=1}^T p_\theta(y_t\mid x,y_{<t})
 \]
-\vspace{-0.18cm}{\small\color{Muted}prefix $\longrightarrow$ next-token distribution}\par\vspace{0.12cm}{\scriptsize\color{Muted}\parencite{vaswani2017attention}}
-\column{0.41\textwidth}
-{\color{Teal}\large Part I abstraction}\par\vspace{0.08cm}
-\[
-  f_{\theta_0}: x \mapsto p(y\mid x)
-\]
-\vspace{-0.22cm}
-\begin{itemize}\small\setlength\itemsep{1.5pt}
-  \item pretrained parameters $\theta_0$
-  \item large differentiable function
-  \item adaptation = parameter perturbation
-\end{itemize}
+\vspace{-0.35cm}
+\begin{center}\small\color{Muted}prefix $\longrightarrow$ next-token distribution\end{center}
+\vspace{0.05cm}
+\begin{center}
+\begin{tikzpicture}
+  \node[boxstyle,minimum width=4.1cm,minimum height=.72cm,align=center,font=\small] (m) {attention $+$ MLP, many layers};
+  \node[tealbox,below=.55cm of m,minimum width=4.1cm,minimum height=.86cm,align=center] (f) {\large $f_{\theta_0}: x \mapsto p(y\mid x)$};
+  \draw[arr] (m)--node[right,font=\scriptsize,text=Muted]{~collapse microstructure}(f);
+\end{tikzpicture}
+\end{center}
 \end{columns}
+\vspace{0.05cm}
+\figsource{vaswani2017attention}{Fig.~1}
 \note{\small\begin{itemize}
-  \item Une LLM moderne reste, au niveau utile ici, un grand réseau autoregressif qui transforme un préfixe en distribution du prochain token.
-  \item L'attention et les MLPs sont bien réels et importants, mais ils ne changent pas la définition de notre mesure.
-  \item Pour la Partie I, on peut donc noter le modèle comme une fonction $f_{\theta_0}$ et étudier la perturbation de paramètres introduite par l'apprentissage.
-  \item Citation de fond: Transformer de Vaswani et al., déjà dans le rapport.
+  \item Voici l'architecture originale du Transformer, telle qu'elle apparaît dans l'article de Vaswani et al.
+  \item Le point n'est pas d'en détailler chaque bloc: il s'agit de montrer qu'une LLM est une pile de blocs attention + MLP.
+  \item Ce que l'on retient: un préfixe entre, une distribution du prochain token sort.
+  \item Pour la Partie I, on peut donc écrire le modèle comme une fonction $f_{\theta_0}$ et étudier la perturbation de paramètres introduite par l'apprentissage.
+  \item L'attention et les MLPs restent importants, mais ils n'entrent pas dans la définition de notre mesure.
 \end{itemize}}
 \end{frame}
 
@@ -277,80 +273,73 @@ Keep $\theta_0$ fixed; learn a much smaller task-specific object.\tinycite{aghaj
 % -----------------------------------------------------------------------------
 \begin{frame}{LoRA: constrain the update, not the base model}
 \framesubtitle{A low-rank parameterization reduces trainable dimension; it is not yet an information rate}
-\begin{columns}[T,onlytextwidth]
-\column{0.57\textwidth}
-\begin{tikzpicture}[>=Latex]
-  \node (x) at (0,0) {$x$};
-  \coordinate (split) at (1.0,0); \fill (split) circle (1.3pt); \draw[arr] (x)--(split);
-  \node[draw=Teal!70!black,fill=Pale,minimum width=3.2cm,minimum height=.95cm,right=1.1cm of split] (W) {\Large $W$ \;\small frozen};
-  \node[draw=Amber!80!black,fill=Sand,minimum width=1.1cm,minimum height=.8cm,below=.55cm of W.west,anchor=west] (A) {$A$};
-  \node[draw=Amber!80!black,fill=Sand,minimum width=1.1cm,minimum height=.8cm,right=.5cm of A] (B) {$B$};
-  \node[draw,circle,inner sep=1.5pt,right=1.0cm of W] (sum) {$+$};
-  \node[right=.75cm of sum] (h) {$h$};
-  \draw[arr] (split) |- (W); \draw[arr] (W)--(sum);
-  \draw[arr] (split) |- (A); \draw[arr] (A)--node[above,font=\scriptsize]{$r\ll d$}(B); \draw[arr] (B) -| (sum);
-  \draw[arr] (sum)--(h);
-  \node[below=.25cm of A,font=\scriptsize,text=Muted] {trainable};
-\end{tikzpicture}
-\column{0.39\textwidth}
+\begin{columns}[c,onlytextwidth]
+\column{0.46\textwidth}
+\begin{center}
+\includegraphics[height=0.50\paperheight]{assets/papers/lora_hu_fig1}
+\end{center}
+\column{0.50\textwidth}
 \[
 W' = W + \Delta W,\qquad
 \Delta W=\frac{\alpha}{r}BA
 \]
-\vspace{0.05cm}
-\small
-\begin{itemize}
-  \item $W$ is shared and frozen
-  \item $A,B$ are trained
-  \item trainable values: $r(d_{in}+d_{out})$ instead of $d_{in}d_{out}$
-  \item same rank $\neq$ same code length
+\vspace{-0.15cm}
+\begin{itemize}\small\setlength\itemsep{2.5pt}
+  \item $W$ is \key{frozen} and already shared
+  \item only $A,B$ are trained, with $r\ll d$
+  \item $r(d_{in}+d_{out})$ values instead of $d_{in}d_{out}$
 \end{itemize}
-\tinycite{hu2022lora}
+\vspace{0.20cm}
+\begin{center}
+\begin{tikzpicture}[node distance=.3cm]
+  \node[tealbox,minimum width=3.5cm,minimum height=.72cm,align=center,font=\small] (r) {frozen base model \,=\, \key{receiver}};
+  \node[amberbox,below=.28cm of r,minimum width=3.5cm,minimum height=.72cm,align=center,font=\small] (m) {LoRA adapter \,=\, \key{message}};
+\end{tikzpicture}
+\end{center}
 \end{columns}
-\vfill
+\vspace{0.05cm}
 \begin{center}\chip{low-rank geometry}\hspace{0.25cm}$\not\equiv$\hspace{0.25cm}\chip{bits needed to preserve behavior}\end{center}
+\vspace{0.10cm}
+\figsource{hu2022lora}{Fig.~1}
 \note{\small\begin{itemize}
-  \item LoRA gèle $W$ et apprend une factorisation de rang faible $BA$.
-  \item Cela réduit énormément le nombre de valeurs entraînables.
-  \item Mais le rang ne donne pas un nombre de bits: les valeurs numériques doivent encore être représentées.
-  \item C'est la première distinction scientifique importante de la Partie I: dimension paramétrique et information utile ne sont pas la même chose.
+  \item Figure originale de Hu et al.: $W$ reste gelée, on n'apprend que $A$ et $B$.
+  \item $BA$ est de rang faible, avec $r$ très petit devant $d$.
+  \item Cela fournit un petit objet appris, séparé du base model.
+  \item C'est précisément ce qui rend possible notre lecture « message + receiver »: le base model est déjà partagé, on ne transmet que l'adapter.
+  \item Mais attention: le rang ne donne pas un nombre de bits: les valeurs numériques doivent encore être représentées.
+  \item Première distinction scientifique de la Partie I: dimension paramétrique et information utile ne sont pas la même chose.
 \end{itemize}}
 \end{frame}
 
 % -----------------------------------------------------------------------------
 \begin{frame}{QLoRA: quantize the receiver, train the adapter}
-\framesubtitle{Memory-efficient training leaves the conceptual channel unchanged}
-\begin{tikzpicture}[node distance=.45cm]
-  \node[amberbox,minimum width=2.2cm,minimum height=.85cm,align=center] (x) {minibatch};
-  \node[tealbox,right=.65cm of x,minimum width=3.0cm,minimum height=1.15cm,align=center] (q) {\bfseries 4-bit backbone\\\small NF4 weights, frozen};
-  \node[boxstyle,right=.65cm of q,minimum width=2.4cm,minimum height=1.15cm,align=center] (dq) {\bfseries dequantize\\\small for compute};
-  \node[amberbox,right=.65cm of dq,minimum width=2.4cm,minimum height=1.15cm,align=center] (lora) {\bfseries LoRA $A,B$\\\small trainable};
-  \draw[arr] (x)--(q); \draw[arr] (q)--(dq); \draw[arr] (dq)--(lora);
-  \draw[-{Latex[length=2mm]},draw=Amber,line width=1pt] (lora.south) -- ++(0,-.75) -| node[pos=.25,below,font=\scriptsize,text=Amber]{gradients update adapter only} ([xshift=0.0cm]lora.south);
-\end{tikzpicture}
-\vspace{0.55cm}
+\framesubtitle{The frozen backbone is stored in 4 bits; the LoRA parameters stay trainable at higher precision}
+\begin{center}
+\includegraphics[width=0.710\textwidth]{assets/papers/qlora_detmers_fig1}
+\end{center}
+\vspace{0.10cm}
 \begin{columns}[T,onlytextwidth]
 \column{0.48\textwidth}
-\textbf{QLoRA helps us train}
-\begin{itemize}\small
-  \item lower backbone memory
-  \item higher-precision adapter optimization
-  \item frozen quantized base model
+\textbf{What QLoRA quantizes}
+\begin{itemize}\small\setlength\itemsep{1.5pt}
+  \item the \key{frozen base model} (NF4, 4-bit)
+  \item adapters remain trainable in 16-bit
 \end{itemize}
 \column{0.48\textwidth}
-\textbf{Our rate question is different}
-\begin{itemize}\small
-  \item after training, fix one adapter
-  \item compress only its representation
-  \item reload and score behavior
+\textbf{What we ask afterwards}
+\begin{itemize}\small\setlength\itemsep{1.5pt}
+  \item fix one trained adapter
+  \item compress \key{the learned update itself}
 \end{itemize}
 \end{columns}
-\vfill\tinycite{dettmers2023qlora}
+\vspace{0.18cm}
+\figsource{dettmers2023qlora}{Fig.~1}
 \note{\small\begin{itemize}
-  \item QLoRA garde le backbone pré-entraîné en représentation 4 bits et entraîne des adapters LoRA à travers lui.
-  \item C'est d'abord une technique d'efficacité mémoire à l'entraînement.
-  \item Notre question de compression vient après: on fixe un adapter appris et on mesure le nombre de bits nécessaires pour le stocker sans perdre le comportement.
-  \item Donc QLoRA et notre protocole parlent tous deux de quantification, mais avec des objectifs distincts.
+  \item Figure originale de Dettmers et al.: trois régimes, full finetuning, LoRA, QLoRA.
+  \item Distinction essentielle: QLoRA quantifie le \emph{backbone} gelé, pas l'adapter. Les paramètres LoRA restent entraînables en précision plus élevée.
+  \item C'est donc d'abord une technique d'efficacité mémoire à l'entraînement.
+  \item Notre travail pose ensuite une autre question: combien peut-on compresser l'update appris tout en conservant son comportement?
+  \item Les deux parlent de quantification, mais l'objet quantifié n'est pas le même.
 \end{itemize}}
 \end{frame}
 
