@@ -2,6 +2,22 @@
 
 Beamer conversion/rework of `soutenance_joey_david_v2.pptx`.
 
+## Pull
+
+```bash
+git switch soutenance-v2-fr-notes
+git pull
+cd soutenance/latex
+```
+
+If the branch is not local yet:
+
+```bash
+git fetch origin
+git switch --track origin/soutenance-v2-fr-notes
+cd soutenance/latex
+```
+
 ## Build
 
 ```bash
