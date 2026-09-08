@@ -1,0 +1,178 @@
+name: Finalize LaTeX soutenance
+
+on:
+  push:
+    branches: [soutenance-v2-fr-notes]
+    paths:
+      - .github/workflows/finalize-latex-soutenance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: soutenance-v2-fr-notes
+          fetch-depth: 0
+
+      - name: Install asset-generation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet numpy matplotlib pymupdf pillow
+
+      - name: Generate thesis-derived figures and final slide assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd soutenance/latex
+          python generate_assets.py
+
+          # Canonical figures from papers already cited in the thesis.
+          cp assets/transformer_vaswani_fig1.png assets/transformer_original.png
+          cp assets/lora_hu_fig1.png assets/lora_original.png
+          cp assets/qlora_dettmers_fig1.png assets/qlora_original.png
+
+          # Convert deterministic / thesis-derived assets to the exact names used by main.tex.
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import pymupdf
+
+          A = Path('assets')
+          Image.open(A/'quantization_4bit.jpg').save(A/'quantization.png')
+          mapping = {
+              'fig_rmse.pdf':'exp_rmse.png',
+              'fig_distinct_rate.pdf':'exp_distinct.png',
+              'fig_content_diversity.pdf':'exp_content.png',
+              'fig_known_info.pdf':'exp_known.png',
+              'fig_diversity_replication.pdf':'exp_diversity.png',
+              'fig_objective_matrices.pdf':'exp_objectives.png',
+              'fig_closed_loop_regret.pdf':'exp_closed_loop.png',
+              'fig_native_handoff.pdf':'exp_native.png',
+              'fig_state_rate.pdf':'exp_state_rate.png',
+              'fig_surface_depth.pdf':'exp_depth.png',
+              'fig_recursive_reliability.pdf':'exp_recursive.png',
+              'fig_reasoning_answer_rate.pdf':'exp_cot_rate.png',
+              'fig_container_controls.pdf':'exp_rank_location.png',
+          }
+          for src,dst in mapping.items():
+              doc=pymupdf.open(A/src)
+              pix=doc[0].get_pixmap(matrix=pymupdf.Matrix(2.2,2.2),alpha=False)
+              pix.save(A/dst)
+              doc.close()
+          PY
+
+      - name: Check every image reference resolves
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd soutenance/latex
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          tex = Path('main.tex').read_text()
+          refs = re.findall(r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}', tex)
+          missing=[]
+          for ref in refs:
+              p=Path(ref)
+              candidates=[]
+              for base in (Path('.'), Path('assets')):
+                  if p.suffix:
+                      candidates.append(base/p)
+                  else:
+                      candidates.extend(base/(str(p)+ext) for ext in ['.pdf','.png','.jpg','.jpeg'])
+              if not any(c.exists() for c in candidates):
+                  missing.append(ref)
+          print('includegraphics refs:', len(refs), 'unique:', len(set(refs)))
+          if missing:
+              print('MISSING:\n'+'\n'.join(sorted(set(missing))))
+              raise SystemExit(1)
+          print('All image references resolve.')
+          PY
+
+      - name: Install LaTeX
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq latexmk texlive-luatex texlive-latex-extra texlive-fonts-extra texlive-bibtex-extra biber poppler-utils imagemagick
+
+      - name: Compile slides and presenter notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd soutenance/latex
+          rm -f soutenance.{aux,bbl,bcf,blg,fdb_latexmk,fls,log,nav,out,run.xml,snm,toc,vrb,pdf}
+          rm -f soutenance-notes.{aux,bbl,bcf,blg,fdb_latexmk,fls,log,nav,out,run.xml,snm,toc,vrb,pdf}
+          make slides
+          make notes
+          pdfinfo soutenance.pdf | grep -E '^(Pages|Page size|File size)'
+          pdfinfo soutenance-notes.pdf | grep -E '^(Pages|Page size|File size)'
+
+      - name: Reject serious TeX layout warnings
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd soutenance/latex
+          echo '--- box warnings ---'
+          grep -E 'Overfull \\hbox|Overfull \\vbox' soutenance.log || true
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          log=Path('soutenance.log').read_text(errors='ignore')
+          vals=[float(x) for x in re.findall(r'Overfull \\hbox \(([-0-9.]+)pt too wide\)',log)]
+          vals += [float(x) for x in re.findall(r'Overfull \\vbox \(([-0-9.]+)pt too high\)',log)]
+          print('overfull values:', vals)
+          if vals and max(vals) >= 8.0:
+              raise SystemExit(f'Serious overflow detected: {max(vals)}pt')
+          PY
+
+      - name: Render contact sheet for visual QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd soutenance/latex
+          rm -rf qa-render && mkdir qa-render
+          pdftoppm -png -r 90 soutenance.pdf qa-render/slide >/dev/null 2>&1
+          montage qa-render/slide-*.png -thumbnail 320x180 -tile 5x -geometry +6+6 qa-montage.png
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          tex=Path('main.tex').read_text()
+          print('frames in source:', len(re.findall(r'\\begin\{frame\}',tex)))
+          print('notes blocks:', len(re.findall(r'\\note\{',tex)))
+          PY
+
+      - name: Commit generated assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add soutenance/latex/assets
+          if git diff --cached --quiet; then
+            echo 'No generated-asset changes to commit.'
+          else
+            git commit -m 'Generate final soutenance visual assets'
+            git push origin HEAD:soutenance-v2-fr-notes
+          fi
+
+      - name: Upload final PDFs and QA montage
+        uses: actions/upload-artifact@v4
+        with:
+          name: soutenance-latex-final
+          path: |
+            soutenance/latex/soutenance.pdf
+            soutenance/latex/soutenance-notes.pdf
+            soutenance/latex/qa-montage.png
+          if-no-files-found: error
+          retention-days: 30
